@@ -4,6 +4,25 @@
   "description": "80s Retro Synthwave Terminal Typing Game with Literature Streaming",
   "type": "module",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./engine": {
+      "import": "./dist/engine/gameEngine.js",
+      "types": "./dist/engine/gameEngine.d.ts"
+    },
+    "./renderer": {
+      "import": "./dist/renderer/index.js",
+      "types": "./dist/renderer/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types.js",
+      "types": "./dist/types.d.ts"
+    }
+  },
   "bin": {
     "type-blitz": "./bin/type-blitz.js"
   },
