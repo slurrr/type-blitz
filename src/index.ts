@@ -95,37 +95,39 @@ class TypeBlitzApp {
       startMenuMusic(this.config.soundEnabled);
     }
 
+    const { cols } = getTerminalDimensions();
     const frameLines: string[] = [];
 
     const headerLines = renderHeader(
       this.state === 'PLAYING' || this.state === 'COUNTDOWN' || this.state === 'SUMMARY' || this.state === 'INITIALS_ENTRY'
         ? this.currentPassage.title
         : undefined,
-      this.currentPassage.author
+      this.currentPassage.author,
+      cols
     );
     frameLines.push(...headerLines);
 
     switch (this.state) {
       case 'MENU':
-        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled));
+        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled, cols));
         break;
 
       case 'PASSAGE_SELECT':
-        frameLines.push(...renderPassageSelectView(this.passageSelectedIndex));
+        frameLines.push(...renderPassageSelectView(this.passageSelectedIndex, cols));
         break;
 
       case 'HIGH_SCORES':
         const scores = loadHighScores();
         const maxVisible = Math.max(5, getTerminalDimensions().rows - 14);
-        frameLines.push(...renderHighScoresView(scores, this.highScoreScrollOffset, maxVisible));
+        frameLines.push(...renderHighScoresView(scores, this.highScoreScrollOffset, maxVisible, cols));
         break;
 
       case 'PLAYING':
-        frameLines.push(...renderStreamView(this.engine));
+        frameLines.push(...renderStreamView(this.engine, cols));
         break;
 
       case 'SUMMARY':
-        frameLines.push(...renderSummaryView(this.engine, this.isNewHighScore));
+        frameLines.push(...renderSummaryView(this.engine, this.isNewHighScore, cols));
         break;
 
       case 'INITIALS_ENTRY':
@@ -133,13 +135,14 @@ class TypeBlitzApp {
           ...renderInitialsEntryView(
             this.initialsInput,
             this.activeInitialsSlot,
-            this.engine.getStats().wpm
+            this.engine.getStats().wpm,
+            cols
           )
         );
         break;
 
       case 'CUSTOM_INPUT':
-        frameLines.push(...this.renderCustomInputView());
+        frameLines.push(...this.renderCustomInputView(cols));
         break;
     }
 
@@ -156,15 +159,14 @@ class TypeBlitzApp {
       helpStr = 'TYPE/PASTE YOUR TEXT | [ENTER] START GAME | [ESC] CANCEL';
     }
 
-    frameLines.push(...renderFooter(helpStr));
+    frameLines.push(...renderFooter(helpStr, cols));
 
     process.stdout.write(ANSI.clearScreen);
     process.stdout.write(frameLines.join('\n'));
   }
 
-  private renderCustomInputView(): string[] {
-    const { cols } = getTerminalDimensions();
-    const innerWidth = Math.max(20, cols - 4);
+  private renderCustomInputView(cols: number): string[] {
+    const innerWidth = Math.max(20, cols - 2);
     const result: string[] = [];
 
     result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
@@ -178,7 +180,6 @@ class TypeBlitzApp {
     result.push(Palette.neonBorder('║') + '  ' + Palette.brightWhite(paddedInput.slice(0, innerWidth - 2)) + Palette.neonBorder('║'));
 
     result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
-    result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
     return result;
   }
@@ -192,13 +193,14 @@ class TypeBlitzApp {
 
     await runCountdownSequence((countdownLines) => {
       playCountdownBeep(this.config.soundEnabled);
-      const headerLines = renderHeader(this.currentPassage.title, this.currentPassage.author);
-      const footerLines = renderFooter('GET READY TO TYPE!');
+      const { cols } = getTerminalDimensions();
+      const headerLines = renderHeader(this.currentPassage.title, this.currentPassage.author, cols);
+      const footerLines = renderFooter('GET READY TO TYPE!', cols);
 
       const fullScreen = [...headerLines, ...countdownLines, ...footerLines];
       process.stdout.write(ANSI.clearScreen);
       process.stdout.write(fullScreen.join('\n'));
-    }, false); // Audio handled in loop callback
+    }, false);
 
     this.isCountingDown = false;
     this.state = 'PLAYING';
@@ -423,13 +425,10 @@ class TypeBlitzApp {
     stopMusic();
 
     if (this.scoreRank === 1) {
-      // #1 Top Score Victory Fanfare & Cheer!
       playTop1Cheer(this.config.soundEnabled);
     } else if (this.scoreRank >= 2 && this.scoreRank <= 10) {
-      // Top 10 High Score Level-Clear Applause!
       playTop10Applause(this.config.soundEnabled);
     } else {
-      // No high score -> Chill synthwave loop while looking at stats
       startMenuMusic(this.config.soundEnabled);
     }
 
@@ -499,9 +498,7 @@ class TypeBlitzApp {
         accuracy: stats.accuracy,
         grade: gradeInfo.grade
       });
-
       this.state = 'HIGH_SCORES';
-      startMenuMusic(this.config.soundEnabled);
       this.render();
     }
   }
@@ -510,25 +507,14 @@ class TypeBlitzApp {
 const program = new Command();
 program
   .name('type-blitz')
-  .description('80s Retro Synthwave Terminal Typing Game with Classic Literature Streaming')
+  .description('80s Retro Synthwave Terminal Typing Game with Literature Streaming')
   .version('1.0.0')
   .option('-p, --passage <id>', 'Start directly with specific passage ID')
-  .option('-l, --list', 'List all available literature passages')
-  .action((options) => {
-    if (options.list) {
-      console.log('\n📚 AVAILABLE LITERATURE PASSAGES:\n');
-      LITERARY_PASSAGES.forEach((p) => {
-        console.log(`  • [${p.id}] "${p.title}" by ${p.author} (${p.year}) - ${p.genre}`);
-      });
-      console.log('');
-      process.exit(0);
-    }
+  .parse(process.argv);
 
-    const app = new TypeBlitzApp(options.passage);
-    app.start().catch((err) => {
-      console.error('Fatal Error:', err);
-      process.exit(1);
-    });
-  });
-
-program.parse(process.argv);
+const options = program.opts();
+const app = new TypeBlitzApp(options.passage);
+app.start().catch((err) => {
+  console.error('Fatal Type-Blitz error:', err);
+  process.exit(1);
+});
