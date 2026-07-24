@@ -13,8 +13,8 @@ export function calculateGrade(wpm: number, accuracy: number): { grade: string; 
   return { grade: 'D', title: '💾 CASSETTE SLOWPOKE 💾' };
 }
 
-export function renderInitialsEntryView(initials: string[], activeSlot: number, statsWpm: number): string[] {
-  const { cols } = getTerminalDimensions();
+export function renderInitialsEntryView(initials: string[], activeSlot: number, statsWpm: number, customCols?: number): string[] {
+  const cols = customCols || getTerminalDimensions().cols;
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
@@ -37,7 +37,6 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  // Render initials boxes: [ C ] [ Y ] [ B ]
   const box0 = activeSlot === 0 ? Palette.neonOrangeBg(` ${initials[0]} `) : Palette.cyan(` ${initials[0]} `);
   const box1 = activeSlot === 1 ? Palette.neonOrangeBg(` ${initials[1]} `) : Palette.cyan(` ${initials[1]} `);
   const box2 = activeSlot === 2 ? Palette.neonOrangeBg(` ${initials[2]} `) : Palette.cyan(` ${initials[2]} `);
@@ -48,7 +47,6 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
   const boxesContent = ' '.repeat(boxesMargin) + boxesLine;
   result.push(formatFramedLine(Palette.neonBorder('║'), boxesContent, Palette.neonBorder('║'), cols));
 
-  // Pointer indicator under active slot
   const arrowSpacing = activeSlot === 0 ? 5 : activeSlot === 1 ? 14 : 23;
   const arrowLine = ' '.repeat(arrowSpacing) + Palette.yellow('▲');
   const arrowContent = ' '.repeat(boxesMargin) + arrowLine;
@@ -66,8 +64,8 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
   return result;
 }
 
-export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): string[] {
-  const { cols } = getTerminalDimensions();
+export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean, customCols?: number): string[] {
+  const cols = customCols || getTerminalDimensions().cols;
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
   const stats = engine.getStats();
@@ -76,7 +74,6 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  // Header Title
   const scoreHeader = Palette.yellow('═══ RUN COMPLETED ═══');
   const scoreHeadVis = visibleLength(scoreHeader);
   const scoreHeadMargin = Math.max(0, Math.floor((innerWidth - scoreHeadVis) / 2));
@@ -91,7 +88,6 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  // Grade Display
   const gradeText = `GRADE: [ ${Palette.magenta(gradeInfo.grade)} ] - ${gradeInfo.title}`;
   const gradePlainLen = visibleLength(gradeText);
   const gradeMargin = Math.max(0, Math.floor((innerWidth - gradePlainLen) / 2));
@@ -99,7 +95,6 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  // Stats Grid Table
   const row1 = `  WPM (NET): ${Palette.yellow(stats.wpm.toString().padStart(3))}       RAW WPM: ${Palette.cyan(stats.rawWpm.toString().padStart(3))}  `;
   const row2 = `  ACCURACY: ${Palette.green((stats.accuracy + '%').padStart(4))}       STREAK:  ${Palette.magenta(stats.maxStreak.toString().padStart(3))}  `;
   const row3 = `  ERRORS:   ${stats.errorsMade > 0 ? Palette.errorRedFg(stats.errorsMade.toString().padStart(3)) : Palette.green('  0')}       TIME:    ${Palette.brightWhite(stats.elapsedSeconds + 's')}  `;
@@ -123,8 +118,8 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
   return result;
 }
 
-export function renderMenuView(selectedIndex: number, soundEnabled: boolean): string[] {
-  const { cols } = getTerminalDimensions();
+export function renderMenuView(selectedIndex: number, soundEnabled: boolean, customCols?: number): string[] {
+  const cols = customCols || getTerminalDimensions().cols;
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
@@ -161,8 +156,8 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean): st
   return result;
 }
 
-export function renderPassageSelectView(selectedIndex: number): string[] {
-  const { cols } = getTerminalDimensions();
+export function renderPassageSelectView(selectedIndex: number, customCols?: number): string[] {
+  const cols = customCols || getTerminalDimensions().cols;
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
@@ -193,9 +188,10 @@ export function renderPassageSelectView(selectedIndex: number): string[] {
 export function renderHighScoresView(
   scores: HighScoreRecord[],
   scrollOffset: number = 0,
-  maxVisibleRows: number = 10
+  maxVisibleRows: number = 10,
+  customCols?: number
 ): string[] {
-  const { cols } = getTerminalDimensions();
+  const cols = customCols || getTerminalDimensions().cols;
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 

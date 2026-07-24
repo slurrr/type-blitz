@@ -2,8 +2,8 @@ import { Palette, getTerminalDimensions } from './ansi.js';
 import { GameEngine } from '../engine/gameEngine.js';
 import { visibleLength, formatFramedLine, padAnsiLine } from './ansiUtils.js';
 
-export function renderStreamView(engine: GameEngine): string[] {
-  const { cols } = getTerminalDimensions();
+export function renderStreamView(engine: GameEngine, customCols?: number): string[] {
+  const cols = customCols || getTerminalDimensions().cols;
   const result: string[] = [];
 
   const text = engine.passage.text;

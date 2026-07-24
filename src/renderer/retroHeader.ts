@@ -1,6 +1,6 @@
 import figlet from 'figlet';
 import { Palette, getTerminalDimensions } from './ansi.js';
-import { visibleLength, formatFramedLine, padAnsiLine } from './ansiUtils.js';
+import { visibleLength, formatFramedLine } from './ansiUtils.js';
 
 let cachedBanner: string[] | null = null;
 
@@ -10,7 +10,6 @@ export function getRetroBanner(): string[] {
     const raw = figlet.textSync('TYPE-BLITZ', { font: 'Slant' });
     const lines = raw.split('\n');
     cachedBanner = lines.map(line => {
-      // Apply a synthwave gradient: Cyan to Magenta
       let colored = '';
       for (let i = 0; i < line.length; i++) {
         const char = line[i];
@@ -34,8 +33,8 @@ export function getRetroBanner(): string[] {
   }
 }
 
-export function renderHeader(passageTitle?: string, author?: string): string[] {
-  const { cols } = getTerminalDimensions();
+export function renderHeader(passageTitle?: string, author?: string, customCols?: number): string[] {
+  const cols = customCols || getTerminalDimensions().cols;
   const bannerLines = getRetroBanner();
   const result: string[] = [];
 
@@ -69,8 +68,8 @@ export function renderHeader(passageTitle?: string, author?: string): string[] {
   return result;
 }
 
-export function renderFooter(controlsHelp: string): string[] {
-  const { cols } = getTerminalDimensions();
+export function renderFooter(controlsHelp: string, customCols?: number): string[] {
+  const cols = customCols || getTerminalDimensions().cols;
   const result: string[] = [];
 
   const helpText = ` [ ${controlsHelp} ] `;

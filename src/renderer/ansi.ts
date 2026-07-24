@@ -29,8 +29,14 @@ export const Palette = {
 };
 
 export function getTerminalDimensions(): { rows: number; cols: number } {
+  if (typeof process !== 'undefined' && process.stdout) {
+    return {
+      rows: process.stdout.rows || 24,
+      cols: process.stdout.columns || 80
+    };
+  }
   return {
-    rows: process.stdout.rows || 24,
-    cols: process.stdout.columns || 80
+    rows: 25,
+    cols: 80
   };
 }

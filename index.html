@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Type-Blitz // Synthwave Terminal Typing Game</title>
+  <link rel="stylesheet" href="/node_modules/@xterm/xterm/css/xterm.css" />
+  <link rel="stylesheet" href="/web/styles.css" />
+</head>
+<body>
+  <div class="wrapper-frame">
+    <div class="header-branding">
+      <span class="neon-title">TYPE-BLITZ</span>
+      <span class="sub-title">80s RETRO SYNTHWAVE TERMINAL</span>
+    </div>
+
+    <div class="crt-container">
+      <div class="scanlines"></div>
+      <div class="crt-flicker"></div>
+      <div id="terminal-container"></div>
+    </div>
+
+    <div class="footer-info">
+      <span>npm install -g type-blitz</span>
+      <span>github.com/slurrr/type-blitz</span>
+    </div>
+  </div>
+
+  <script type="module" src="/web/main.ts"></script>
+</body>
+</html>

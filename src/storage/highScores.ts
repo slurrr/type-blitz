@@ -1,42 +1,24 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import os from 'node:os';
 import { HighScoreRecord } from '../types.js';
+import { BrowserLocalStorageAdapter, MAX_HIGH_SCORES } from './scoreAdapter.js';
+import { loadNodeHighScores, saveNodeHighScore } from './nodeStorage.js';
 
-export const MAX_HIGH_SCORES = 100;
+export { MAX_HIGH_SCORES };
 
-const CONFIG_DIR = path.join(os.homedir(), '.config', 'type-blitz');
-const DEFAULT_SCORES_FILE = path.join(CONFIG_DIR, 'highscores.json');
-
-export function getScoresFilePath(): string {
-  return process.env.TYPE_BLITZ_SCORES_FILE || DEFAULT_SCORES_FILE;
-}
+const isBrowser = typeof window !== 'undefined' && typeof localStorage !== 'undefined';
+const browserAdapter = new BrowserLocalStorageAdapter();
 
 export function loadHighScores(): HighScoreRecord[] {
-  const scoresFile = getScoresFilePath();
-  try {
-    const dir = path.dirname(scoresFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    if (fs.existsSync(scoresFile)) {
-      const data = fs.readFileSync(scoresFile, 'utf-8');
-      const records: HighScoreRecord[] = JSON.parse(data);
-      return records
-        .map(r => ({
-          ...r,
-          initials: (r.initials || 'AAA').toUpperCase().slice(0, 3)
-        }))
-        .sort((a, b) => b.wpm - a.wpm)
-        .slice(0, MAX_HIGH_SCORES);
-    }
-  } catch {
-    // Return empty array if read fails
+  if (isBrowser) {
+    return browserAdapter.loadHighScores();
   }
-  return [];
+  return loadNodeHighScores(MAX_HIGH_SCORES);
 }
 
 export function getScoreRank(wpm: number): number {
+  if (isBrowser) {
+    return browserAdapter.getScoreRank(wpm);
+  }
+
   if (wpm <= 0) return 0;
   const scores = loadHighScores();
   if (scores.length === 0) return 1;
@@ -59,28 +41,8 @@ export function qualifiesForHighScore(wpm: number): boolean {
 }
 
 export function saveHighScore(record: Omit<HighScoreRecord, 'id' | 'date'>): HighScoreRecord {
-  const scores = loadHighScores();
-  const formattedInitials = (record.initials || 'AAA').toUpperCase().padEnd(3, 'A').slice(0, 3);
-  const newRecord: HighScoreRecord = {
-    ...record,
-    initials: formattedInitials,
-    id: Math.random().toString(36).substring(2, 9),
-    date: new Date().toISOString().split('T')[0]
-  };
-  scores.push(newRecord);
-  scores.sort((a, b) => b.wpm - a.wpm);
-  const topScores = scores.slice(0, MAX_HIGH_SCORES);
-
-  const scoresFile = getScoresFilePath();
-  try {
-    const dir = path.dirname(scoresFile);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(scoresFile, JSON.stringify(topScores, null, 2), 'utf-8');
-  } catch {
-    // Ignore save errors gracefully
+  if (isBrowser) {
+    return browserAdapter.saveHighScore(record);
   }
-
-  return newRecord;
+  return saveNodeHighScore(record, MAX_HIGH_SCORES);
 }
