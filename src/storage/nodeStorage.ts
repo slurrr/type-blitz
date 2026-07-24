@@ -3,17 +3,18 @@ import path from 'node:path';
 import os from 'node:os';
 import { HighScoreRecord } from '../types.js';
 
-const CONFIG_DIR = typeof os.homedir === 'function' ? path.join(os.homedir(), '.config', 'type-blitz') : '/tmp/type-blitz';
-const DEFAULT_SCORES_FILE = path.join(CONFIG_DIR, 'highscores.json');
-
 export function getScoresFilePath(): string {
   if (typeof process !== 'undefined' && process.env) {
-    return process.env.TYPE_BLITZ_SCORES_FILE || DEFAULT_SCORES_FILE;
+    if (process.env.TYPE_BLITZ_SCORES_FILE) {
+      return process.env.TYPE_BLITZ_SCORES_FILE;
+    }
   }
-  return DEFAULT_SCORES_FILE;
+  const homeDir = typeof os.homedir === 'function' ? os.homedir() : '/tmp';
+  return path.join(homeDir, '.config', 'type-blitz', 'highscores.json');
 }
 
 export function loadNodeHighScores(maxCount: number = 100): HighScoreRecord[] {
+  if (typeof window !== 'undefined') return [];
   const scoresFile = getScoresFilePath();
   try {
     const dir = path.dirname(scoresFile);
@@ -38,7 +39,6 @@ export function loadNodeHighScores(maxCount: number = 100): HighScoreRecord[] {
 }
 
 export function saveNodeHighScore(record: Omit<HighScoreRecord, 'id' | 'date'>, maxCount: number = 100): HighScoreRecord {
-  const scores = loadNodeHighScores(maxCount);
   const formattedInitials = (record.initials || 'AAA').toUpperCase().padEnd(3, 'A').slice(0, 3);
   const newRecord: HighScoreRecord = {
     ...record,
@@ -47,6 +47,9 @@ export function saveNodeHighScore(record: Omit<HighScoreRecord, 'id' | 'date'>, 
     date: new Date().toISOString().split('T')[0]
   };
 
+  if (typeof window !== 'undefined') return newRecord;
+
+  const scores = loadNodeHighScores(maxCount);
   scores.push(newRecord);
   scores.sort((a, b) => b.wpm - a.wpm);
   const topScores = scores.slice(0, maxCount);

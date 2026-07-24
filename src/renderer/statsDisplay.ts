@@ -124,12 +124,12 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean, cus
   const result: string[] = [];
 
   const options = [
-    '[1] QUICK PLAY (RANDOM CLASSIC LITERATURE)',
-    '[2] SELECT PASSAGE BY AUTHOR / WORK',
-    '[3] ENTER CUSTOM TEXT',
-    '[4] ARCADE HIGH SCORES (TOP 100)',
-    `[5] SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
-    '[6] EXIT GAME'
+    '[ 01:PLAY ] QUICK PLAY (RANDOM CLASSIC LITERATURE)',
+    '[ 02:LIST ] SELECT PASSAGE BY AUTHOR / WORK',
+    '[ 03:TEXT ] ENTER CUSTOM PASSAGE',
+    '[ 04:RANK ] ARCADE LEADERBOARD (TOP 100)',
+    `[ 05:AUDIO ] SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
+    '[ 06:EXIT ] SHUTDOWN ENGINE'
   ];
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
@@ -146,12 +146,6 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean, cus
   });
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
-  result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
-
-  const navHelp = Palette.dim('Use [UP/DOWN] or [1-6] to Select  |  [ENTER/SPACE] to Confirm');
-  const navPlain = visibleLength(navHelp);
-  const navMargin = Math.max(0, Math.floor((innerWidth - navPlain) / 2));
-  result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(navMargin) + navHelp, Palette.neonBorder('║'), cols));
 
   return result;
 }

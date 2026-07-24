@@ -1,5 +1,6 @@
 import { HighScoreRecord } from '../types.js';
 import { BrowserLocalStorageAdapter, MAX_HIGH_SCORES } from './scoreAdapter.js';
+import { loadNodeHighScores, saveNodeHighScore } from './nodeStorage.js';
 
 export { MAX_HIGH_SCORES };
 
@@ -10,12 +11,7 @@ export function loadHighScores(): HighScoreRecord[] {
   if (isBrowser) {
     return browserAdapter.loadHighScores();
   }
-  try {
-    const { loadNodeHighScores } = require('./nodeStorage.js');
-    return loadNodeHighScores(MAX_HIGH_SCORES);
-  } catch {
-    return [];
-  }
+  return loadNodeHighScores(MAX_HIGH_SCORES);
 }
 
 export function getScoreRank(wpm: number): number {
@@ -48,16 +44,5 @@ export function saveHighScore(record: Omit<HighScoreRecord, 'id' | 'date'>): Hig
   if (isBrowser) {
     return browserAdapter.saveHighScore(record);
   }
-  try {
-    const { saveNodeHighScore } = require('./nodeStorage.js');
-    return saveNodeHighScore(record, MAX_HIGH_SCORES);
-  } catch {
-    const formattedInitials = (record.initials || 'AAA').toUpperCase().padEnd(3, 'A').slice(0, 3);
-    return {
-      ...record,
-      initials: formattedInitials,
-      id: Math.random().toString(36).substring(2, 9),
-      date: new Date().toISOString().split('T')[0]
-    };
-  }
+  return saveNodeHighScore(record, MAX_HIGH_SCORES);
 }

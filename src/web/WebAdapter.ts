@@ -10,7 +10,7 @@ export class WebTerminalAdapter {
     this.term = new Terminal({
       cursorBlink: false,
       cursorStyle: 'bar',
-      cursorWidth: 0,
+      cursorWidth: 1,
       cols: 80,
       rows: 25,
       convertEol: true,
@@ -98,6 +98,6 @@ export class WebTerminalAdapter {
   }
 
   public getDimensions(): { cols: number; rows: number } {
-    return { cols: this.term.cols || 80, rows: this.term.rows || 25 };
+    return { cols: Math.max(80, this.term.cols || 80), rows: Math.max(25, this.term.rows || 25) };
   }
 }
