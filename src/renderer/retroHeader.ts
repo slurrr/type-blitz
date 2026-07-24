@@ -56,11 +56,16 @@ export function renderHeader(passageTitle?: string, author?: string, customCols?
     }
   }
 
-  // 80s Perspective Grid line accent
+  // 80s Perspective Grid line accent centered
   const gridSegment = Palette.magenta('^') + Palette.cyan('-') + Palette.magenta('v') + Palette.cyan('-');
-  const repeats = Math.floor((cols - 2) / 4);
-  const repeatedGrid = gridSegment.repeat(repeats);
-  const gridRow = formatFramedLine(Palette.neonBorder('║'), repeatedGrid, Palette.neonBorder('║'), cols);
+  const available = cols - 2;
+  const repeats = Math.floor((available - 2) / 4);
+  const gridCore = gridSegment.repeat(repeats);
+  const coreLen = visibleLength(gridCore);
+  const leftSpace = Math.floor((available - coreLen) / 2);
+  const rightSpace = available - coreLen - leftSpace;
+  const gridContent = ' '.repeat(leftSpace) + gridCore + ' '.repeat(rightSpace);
+  const gridRow = formatFramedLine(Palette.neonBorder('║'), gridContent, Palette.neonBorder('║'), cols);
   result.push(gridRow);
 
   return result;

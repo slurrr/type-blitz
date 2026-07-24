@@ -25,7 +25,8 @@ export const Palette = {
   brightWhite: chalk.rgb(240, 245, 255),
   darkBg: chalk.bgRgb(15, 16, 28),
   subtleLine: chalk.rgb(70, 75, 100),
-  neonBorder: chalk.rgb(255, 0, 180).bold
+  // Plain RGB without bold so Linux terminals (GNOME Terminal/VTE) use native box-drawing glyphs
+  neonBorder: chalk.rgb(255, 0, 180)
 };
 
 export function getTerminalDimensions(): { rows: number; cols: number } {
