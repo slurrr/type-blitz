@@ -1,10 +1,11 @@
 import figlet from 'figlet';
 import { Palette, getTerminalDimensions } from './ansi.js';
+import { visibleLength, formatFramedLine } from './ansiUtils.js';
 import { playBeep } from '../sound/audio.js';
 
 export function renderCountdownFrame(count: number | string): string[] {
   const { cols } = getTerminalDimensions();
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
   let bigText = '';
@@ -17,13 +18,11 @@ export function renderCountdownFrame(count: number | string): string[] {
   const lines = bigText.split('\n').filter(l => l.trim().length > 0);
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
-  result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
+  result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
   for (const line of lines) {
     const plainLength = line.length;
     const margin = Math.max(0, Math.floor((innerWidth - plainLength) / 2));
-    const leftPad = ' '.repeat(margin);
-    const rightPad = ' '.repeat(Math.max(0, innerWidth - plainLength - margin));
 
     let coloredLine = '';
     if (count === 'GET READY!') {
@@ -38,10 +37,11 @@ export function renderCountdownFrame(count: number | string): string[] {
       coloredLine = Palette.green(line);
     }
 
-    result.push(Palette.neonBorder('║') + leftPad + coloredLine + rightPad + Palette.neonBorder('║'));
+    const content = ' '.repeat(margin) + coloredLine;
+    result.push(formatFramedLine(Palette.neonBorder('║'), content, Palette.neonBorder('║'), cols));
   }
 
-  result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
+  result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
   return result;

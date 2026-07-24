@@ -1,5 +1,6 @@
 import figlet from 'figlet';
 import { Palette, getTerminalDimensions } from './ansi.js';
+import { visibleLength, formatFramedLine, padAnsiLine } from './ansiUtils.js';
 
 let cachedBanner: string[] | null = null;
 
@@ -40,7 +41,8 @@ export function renderHeader(passageTitle?: string, author?: string): string[] {
 
   // Top Neon Line
   const titleText = ' ❖ SYNTHWAVE ' + (passageTitle ? `| ${passageTitle.toUpperCase()} by ${author?.toUpperCase()} ` : '') + '❖ ';
-  const padLength = Math.max(0, cols - titleText.length - 4);
+  const titleVisLen = visibleLength(titleText);
+  const padLength = Math.max(0, cols - titleVisLen - 2);
   const leftPad = '═'.repeat(Math.floor(padLength / 2));
   const rightPad = '═'.repeat(Math.ceil(padLength / 2));
 
@@ -49,18 +51,19 @@ export function renderHeader(passageTitle?: string, author?: string): string[] {
   // Add centered ASCII Banner lines if terminal wide enough
   if (cols >= 60) {
     for (const bLine of bannerLines) {
-      const plainLength = bLine.replace(/\x1b\[[0-9;]*m/g, '').length;
+      const plainLength = visibleLength(bLine);
       const margin = Math.max(0, Math.floor((cols - plainLength - 2) / 2));
       const leftPadStr = ' '.repeat(margin);
-      const rightPadStr = ' '.repeat(Math.max(0, cols - plainLength - margin - 2));
-      result.push(Palette.neonBorder('║') + leftPadStr + bLine + rightPadStr + Palette.neonBorder('║'));
+      const content = leftPadStr + bLine;
+      result.push(formatFramedLine(Palette.neonBorder('║'), content, Palette.neonBorder('║'), cols));
     }
   }
 
   // 80s Perspective Grid line accent
   const gridSegment = Palette.magenta('▲') + Palette.cyan('─') + Palette.magenta('▼') + Palette.cyan('─');
   const repeats = Math.floor((cols - 2) / 4);
-  const gridRow = Palette.neonBorder('║') + gridSegment.repeat(repeats).padEnd(cols - 2) + Palette.neonBorder('║');
+  const repeatedGrid = gridSegment.repeat(repeats);
+  const gridRow = formatFramedLine(Palette.neonBorder('║'), repeatedGrid, Palette.neonBorder('║'), cols);
   result.push(gridRow);
 
   return result;
@@ -71,7 +74,8 @@ export function renderFooter(controlsHelp: string): string[] {
   const result: string[] = [];
 
   const helpText = ` [ ${controlsHelp} ] `;
-  const padLength = Math.max(0, cols - helpText.length - 4);
+  const helpVisLen = visibleLength(helpText);
+  const padLength = Math.max(0, cols - helpVisLen - 2);
   const leftPad = '═'.repeat(Math.floor(padLength / 2));
   const rightPad = '═'.repeat(Math.ceil(padLength / 2));
 

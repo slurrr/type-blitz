@@ -1,5 +1,6 @@
 import { Palette, getTerminalDimensions } from './ansi.js';
 import { GameEngine } from '../engine/gameEngine.js';
+import { visibleLength, formatFramedLine, padAnsiLine } from './ansiUtils.js';
 
 export function renderStreamView(engine: GameEngine): string[] {
   const { cols } = getTerminalDimensions();
@@ -10,67 +11,59 @@ export function renderStreamView(engine: GameEngine): string[] {
   const errorIdx = engine.errorIndex;
   const stats = engine.getStats();
 
-  // Width of internal content inside border
-  const innerWidth = Math.max(20, cols - 4);
+  // Width of internal content inside border (cols minus left & right border chars)
+  const innerWidth = Math.max(20, cols - 2);
   const centerX = Math.floor(innerWidth / 2);
 
   // Determine current active focal position in the text
-  // We align the current cursor / word focal point right at `centerX`
   const activePos = typed.length;
 
   // Render stats bar box
   const statsBar = ` WPM: ${Palette.yellow(stats.wpm.toString())} | ACC: ${Palette.cyan(stats.accuracy + '%')} | STREAK: ${Palette.magenta(stats.maxStreak.toString())} | ERRORS: ${stats.errorsMade > 0 ? Palette.errorRedFg(stats.errorsMade.toString()) : Palette.green('0')} | TIME: ${Palette.green(stats.elapsedSeconds + 's')} `;
-  const statsPad = Math.max(0, innerWidth - statsBar.replace(/\x1b\[[0-9;]*m/g, '').length);
+  const statsVisLen = visibleLength(statsBar);
+  const statsPad = Math.max(0, innerWidth - statsVisLen);
   const leftStatsPad = ' '.repeat(Math.floor(statsPad / 2));
-  const rightStatsPad = ' '.repeat(Math.ceil(statsPad / 2));
+  const statsContent = leftStatsPad + statsBar;
 
-  result.push(Palette.neonBorder('║') + leftStatsPad + statsBar + rightStatsPad + Palette.neonBorder('║'));
+  result.push(formatFramedLine(Palette.neonBorder('║'), statsContent, Palette.neonBorder('║'), cols));
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
   // Center Marker Indicator (80s target arrow)
   const leftTargetPad = Math.max(0, centerX - 5);
-  const targetArrowLine = ' '.repeat(leftTargetPad) + Palette.neonOrangeFg('▼ TARGET ▼') + ' '.repeat(Math.max(0, innerWidth - leftTargetPad - 10));
-  result.push(Palette.neonBorder('║') + targetArrowLine + Palette.neonBorder('║'));
+  const targetArrowLine = ' '.repeat(leftTargetPad) + Palette.neonOrangeFg('▼ TARGET ▼');
+  result.push(formatFramedLine(Palette.neonBorder('║'), targetArrowLine, Palette.neonBorder('║'), cols));
 
   // Single Line Passage Stream rendering
-  // Stream buffer generation for columns 0..innerWidth-1
   let streamLine = '';
 
   for (let col = 0; col < innerWidth; col++) {
-    // Map screen column `col` to text index `textIdx`
     const textIdx = activePos + (col - centerX);
 
     if (textIdx < 0) {
-      // Off left edge (before start of passage) -> padded spaces or subtle retro grid dot
       streamLine += ' ';
     } else if (textIdx < typed.length) {
-      // Already typed portion
       if (errorIdx !== -1 && textIdx >= errorIdx) {
-        // Red Error Highlighter for error index and all subsequent keystrokes
         const wrongChar = typed[textIdx] || (textIdx < text.length ? text[textIdx] : ' ');
         streamLine += Palette.errorRedBg(wrongChar);
       } else {
-        // Correctly typed -> Orange Highlighter Effect!
         const correctChar = textIdx < text.length ? text[textIdx] : ' ';
         streamLine += Palette.neonOrangeBg(correctChar);
       }
     } else if (textIdx < text.length) {
-      // Upcoming / not typed yet -> normal text with no background highlight
       const char = text[textIdx];
       streamLine += Palette.brightWhite(char);
     } else {
-      // Past end of passage -> trailing space
       streamLine += ' ';
     }
   }
 
   // Stream Line Row
-  result.push(Palette.neonBorder('║') + streamLine + Palette.neonBorder('║'));
+  result.push(formatFramedLine(Palette.neonBorder('║'), streamLine, Palette.neonBorder('║'), cols));
 
   // Center Marker Bottom Indicator
   const leftBottomPad = Math.max(0, centerX - 5);
-  const bottomArrowLine = ' '.repeat(leftBottomPad) + Palette.neonOrangeFg('▲ CENTER ▲') + ' '.repeat(Math.max(0, innerWidth - leftBottomPad - 10));
-  result.push(Palette.neonBorder('║') + bottomArrowLine + Palette.neonBorder('║'));
+  const bottomArrowLine = ' '.repeat(leftBottomPad) + Palette.neonOrangeFg('▲ CENTER ▲');
+  result.push(formatFramedLine(Palette.neonBorder('║'), bottomArrowLine, Palette.neonBorder('║'), cols));
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
@@ -84,12 +77,12 @@ export function renderStreamView(engine: GameEngine): string[] {
   const currentWordDisplay = wordInfo.word ? `WORD: "${Palette.yellow(wordInfo.word)}"` : '';
 
   const statusText = ` ${currentWordDisplay} | PROGRESS: [${progressBar}] ${progressPercent}% `;
-  const statusPlainLen = statusText.replace(/\x1b\[[0-9;]*m/g, '').length;
-  const statusPad = Math.max(0, innerWidth - statusPlainLen);
+  const statusVisLen = visibleLength(statusText);
+  const statusPad = Math.max(0, innerWidth - statusVisLen);
   const leftStatusPad = ' '.repeat(Math.floor(statusPad / 2));
-  const rightStatusPad = ' '.repeat(Math.ceil(statusPad / 2));
+  const statusContent = leftStatusPad + statusText;
 
-  result.push(Palette.neonBorder('║') + leftStatusPad + statusText + rightStatusPad + Palette.neonBorder('║'));
+  result.push(formatFramedLine(Palette.neonBorder('║'), statusContent, Palette.neonBorder('║'), cols));
 
   return result;
 }
