@@ -95,7 +95,7 @@ class TypeBlitzApp {
       startMenuMusic(this.config.soundEnabled);
     }
 
-    const { cols } = getTerminalDimensions();
+    const { rows, cols } = getTerminalDimensions();
     const frameLines: string[] = [];
 
     const headerLines = renderHeader(
@@ -161,8 +161,17 @@ class TypeBlitzApp {
 
     frameLines.push(...renderFooter(helpStr, cols));
 
+    let visibleLines = frameLines;
+    if (visibleLines.length > rows) {
+      visibleLines = [
+        ...visibleLines.slice(0, rows - 1),
+        visibleLines[visibleLines.length - 1]
+      ];
+    }
+
     process.stdout.write(ANSI.clearScreen);
-    process.stdout.write(frameLines.join('\n'));
+    process.stdout.write(ANSI.moveTo(1, 1));
+    process.stdout.write(visibleLines.join('\n'));
   }
 
   private renderCustomInputView(cols: number): string[] {
@@ -193,12 +202,19 @@ class TypeBlitzApp {
 
     await runCountdownSequence((countdownLines) => {
       playCountdownBeep(this.config.soundEnabled);
-      const { cols } = getTerminalDimensions();
+      const { rows, cols } = getTerminalDimensions();
       const headerLines = renderHeader(this.currentPassage.title, this.currentPassage.author, cols);
       const footerLines = renderFooter('GET READY TO TYPE!', cols);
 
-      const fullScreen = [...headerLines, ...countdownLines, ...footerLines];
+      let fullScreen = [...headerLines, ...countdownLines, ...footerLines];
+      if (fullScreen.length > rows) {
+        fullScreen = [
+          ...fullScreen.slice(0, rows - 1),
+          fullScreen[fullScreen.length - 1]
+        ];
+      }
       process.stdout.write(ANSI.clearScreen);
+      process.stdout.write(ANSI.moveTo(1, 1));
       process.stdout.write(fullScreen.join('\n'));
     }, false);
 

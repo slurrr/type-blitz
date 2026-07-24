@@ -120,17 +120,14 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean, cus
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  // Find maximum label width to left-align all menu options cleanly in one column
-  const labelWidths = options.map(opt => visibleLength(opt) + 3);
-  const maxLabelWidth = Math.max(...labelWidths);
-  const leftMargin = Math.max(0, Math.floor((innerWidth - maxLabelWidth) / 2));
-
   options.forEach((opt, idx) => {
     const isSelected = idx === selectedIndex;
     const prefix = isSelected ? Palette.neonOrangeFg(' > ') : '   ';
     const label = isSelected ? Palette.neonOrangeBg(` ${opt} `) : Palette.brightWhite(opt);
-    const line = ' '.repeat(leftMargin) + prefix + label;
-    result.push(formatFramedLine(Palette.neonBorder('║'), line, Palette.neonBorder('║'), cols));
+    const line = prefix + label;
+    const plainLen = visibleLength(line);
+    const margin = Math.max(0, Math.floor((innerWidth - plainLen) / 2));
+    result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(margin) + line, Palette.neonBorder('║'), cols));
   });
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
