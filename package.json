@@ -8,6 +8,7 @@
     "type-blitz": "./bin/type-blitz.js"
   },
   "scripts": {
+    "dev": "vite",
     "build": "tsc",
     "build:web": "vite build",
     "start": "tsx src/index.ts",
