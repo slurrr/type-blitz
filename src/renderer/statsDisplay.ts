@@ -4,12 +4,12 @@ import { HighScoreRecord } from '../types.js';
 import { LITERARY_PASSAGES } from '../passages/passages.js';
 
 export function calculateGrade(wpm: number, accuracy: number): { grade: string; title: string } {
-  if (wpm >= 100 && accuracy >= 97) return { grade: 'S+', title: '⚡ CYBER GOD ⚡' };
-  if (wpm >= 80 && accuracy >= 95) return { grade: 'A+', title: '🔥 SYNTH SPEEDSTER 🔥' };
-  if (wpm >= 60 && accuracy >= 90) return { grade: 'A', title: '🚀 TURBO TYPIST 🚀' };
-  if (wpm >= 40 && accuracy >= 85) return { grade: 'B', title: '🕹️ NEON CRUISER 🕹️' };
-  if (wpm >= 25 && accuracy >= 75) return { grade: 'C', title: '📼 RETRO TYPER 📼' };
-  return { grade: 'D', title: '💾 CASSETTE SLOWPOKE 💾' };
+  if (wpm >= 100 && accuracy >= 97) return { grade: 'S+', title: 'CYBER GOD' };
+  if (wpm >= 80 && accuracy >= 95) return { grade: 'A+', title: 'SYNTH SPEEDSTER' };
+  if (wpm >= 60 && accuracy >= 90) return { grade: 'A', title: 'TURBO TYPIST' };
+  if (wpm >= 40 && accuracy >= 85) return { grade: 'B', title: 'NEON CRUISER' };
+  if (wpm >= 25 && accuracy >= 75) return { grade: 'C', title: 'RETRO TYPER' };
+  return { grade: 'D', title: 'CASSETTE SLOWPOKE' };
 }
 
 export function renderInitialsEntryView(initials: string[], activeSlot: number, statsWpm: number): string[] {
@@ -122,12 +122,12 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean): st
   const result: string[] = [];
 
   const options = [
-    '⚡ QUICK PLAY (RANDOM CLASSIC LITERATURE)',
-    '📚 SELECT PASSAGE BY AUTHOR / WORK',
-    '✍️  ENTER CUSTOM TEXT',
-    '🏆 ARCADE HIGH SCORES (TOP 100)',
-    `🔊 SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
-    '❌ EXIT GAME'
+    '★ QUICK PLAY (RANDOM CLASSIC LITERATURE)',
+    '◆ SELECT PASSAGE BY AUTHOR / WORK',
+    '▶ ENTER CUSTOM PASSAGE',
+    '❖ ARCADE HIGH SCORES (TOP 100)',
+    `♫ SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
+    '■ EXIT GAME'
   ];
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
@@ -135,7 +135,7 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean): st
 
   options.forEach((opt, idx) => {
     const isSelected = idx === selectedIndex;
-    const prefix = isSelected ? Palette.neonOrangeFg(' ➤ ') : '   ';
+    const prefix = isSelected ? Palette.neonOrangeFg(' > ') : '   ';
     const label = isSelected ? Palette.neonOrangeBg(` ${opt} `) : Palette.brightWhite(opt);
     const line = prefix + label;
     const plainLen = line.replace(/\x1b\[[0-9;]*m/g, '').length;
@@ -165,7 +165,7 @@ export function renderPassageSelectView(selectedIndex: number): string[] {
 
   LITERARY_PASSAGES.forEach((p, idx) => {
     const isSelected = idx === selectedIndex;
-    const prefix = isSelected ? Palette.neonOrangeFg('► ') : '  ';
+    const prefix = isSelected ? Palette.neonOrangeFg('▶ ') : '  ';
     const titleStr = `${p.title} (${p.year}) - ${p.author}`;
     const formatted = isSelected ? Palette.neonOrangeBg(` ${titleStr} `) : Palette.cyan(titleStr);
     const fullLine = prefix + formatted + Palette.dim(` [${p.genre}]`);
