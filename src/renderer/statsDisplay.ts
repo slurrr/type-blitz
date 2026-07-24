@@ -21,7 +21,7 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  const badge = Palette.neonOrangeBg(' *** NEW HIGH SCORE RECORD! *** ');
+  const badge = Palette.neonOrangeBg(' ★ NEW HIGH SCORE RECORD! ★ ');
   const badgeLen = visibleLength(badge);
   const badgeMargin = Math.max(0, Math.floor((innerWidth - badgeLen) / 2));
   const badgeLine = ' '.repeat(badgeMargin) + badge;
@@ -53,13 +53,6 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
   result.push(formatFramedLine(Palette.neonBorder('║'), arrowContent, Palette.neonBorder('║'), cols));
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
-  result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
-
-  const help = Palette.dim('Type 3 Letters OR [UP/DOWN] Change, [LEFT/RIGHT] Move  |  [ENTER] Confirm');
-  const helpPlain = visibleLength(help);
-  const helpMargin = Math.max(0, Math.floor((innerWidth - helpPlain) / 2));
-  const helpContent = ' '.repeat(helpMargin) + help;
-  result.push(formatFramedLine(Palette.neonBorder('║'), helpContent, Palette.neonBorder('║'), cols));
 
   return result;
 }
@@ -80,7 +73,7 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean, c
   result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(scoreHeadMargin) + scoreHeader, Palette.neonBorder('║'), cols));
 
   if (isNewHighScore) {
-    const hsBadge = Palette.neonOrangeBg(' *** QUALIFIES FOR TOP 100 ARCADE LEADERBOARD! *** ');
+    const hsBadge = Palette.neonOrangeBg(' ★ QUALIFIES FOR TOP 100 ARCADE LEADERBOARD! ★ ');
     const hsVis = visibleLength(hsBadge);
     const hsMargin = Math.max(0, Math.floor((innerWidth - hsVis) / 2));
     result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(hsMargin) + hsBadge, Palette.neonBorder('║'), cols));
@@ -106,14 +99,6 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean, c
   }
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
-  result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
-
-  const promptText = isNewHighScore
-    ? `${Palette.yellow('[ENTER/SPACE] Save High Score Initials')}  |  ${Palette.magenta('[M] Menu')}  |  ${Palette.errorRedFg('[Q] Quit')}`
-    : `${Palette.yellow('[SPACE/ENTER] Next Passage')}  |  ${Palette.cyan('[R] Retry')}  |  ${Palette.magenta('[M] Menu')}  |  ${Palette.errorRedFg('[Q] Quit')}`;
-  const promptPlain = visibleLength(promptText);
-  const promptMargin = Math.max(0, Math.floor((innerWidth - promptPlain) / 2));
-  result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(promptMargin) + promptText, Palette.neonBorder('║'), cols));
 
   return result;
 }
@@ -124,12 +109,12 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean, cus
   const result: string[] = [];
 
   const options = [
-    '[ 01:PLAY ] QUICK PLAY (RANDOM CLASSIC LITERATURE)',
-    '[ 02:LIST ] SELECT PASSAGE BY AUTHOR / WORK',
-    '[ 03:TEXT ] ENTER CUSTOM PASSAGE',
-    '[ 04:RANK ] ARCADE LEADERBOARD (TOP 100)',
-    `[ 05:AUDIO ] SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
-    '[ 06:EXIT ] SHUTDOWN ENGINE'
+    '⚡ QUICK PLAY (RANDOM CLASSIC LITERATURE)',
+    '◆ SELECT PASSAGE BY AUTHOR / WORK',
+    '▶ ENTER CUSTOM PASSAGE',
+    '★ ARCADE LEADERBOARD (TOP 100)',
+    `♫ SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
+    '■ SHUTDOWN ENGINE'
   ];
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
@@ -170,11 +155,6 @@ export function renderPassageSelectView(selectedIndex: number, customCols?: numb
   });
 
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
-  result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
-
-  const previewPassage = LITERARY_PASSAGES[selectedIndex];
-  const snippet = `PREVIEW: "${previewPassage.text.slice(0, Math.max(10, innerWidth - 12))}..."`;
-  result.push(formatFramedLine(Palette.neonBorder('║'), Palette.dim(snippet), Palette.neonBorder('║'), cols));
 
   return result;
 }
@@ -214,13 +194,7 @@ export function renderHighScoresView(
     });
   }
 
-  result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
-  const total = scores.length;
-  const endIdx = Math.min(scrollOffset + maxVisibleRows, total);
-  const rangeStr = total > 0 ? `[ #${scrollOffset + 1}-${endIdx} OF ${total} ] ` : '';
-  const helpText = `${rangeStr}Use [UP/DOWN/PGUP/PGDN] Scroll | [ESC/M] Menu`;
-  const margin = Math.max(0, Math.floor((innerWidth - helpText.length) / 2));
-  result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(margin) + Palette.green(helpText), Palette.neonBorder('║'), cols));
+  result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
   return result;
 }

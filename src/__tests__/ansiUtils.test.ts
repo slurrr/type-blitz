@@ -33,6 +33,14 @@ function runTests() {
   assert.strictEqual(stripAnsi(line), '║CENTRED CONTENT                       ║');
   console.log('  ✓ Formats framed lines with exact target column width including borders');
 
+  // Test 5: Wide Unicode symbol length calculation
+  const unicodeStr = Palette.yellow('⚡') + ' ' + Palette.cyan('QUICK PLAY');
+  // ⚡ is 1 cell, space is 1, QUICK PLAY is 10 -> total 12
+  assert.strictEqual(visibleLength(unicodeStr), 12);
+  const unicodeFramed = formatFramedLine(left, unicodeStr, right, 40);
+  assert.strictEqual(visibleLength(unicodeFramed), 40);
+  console.log('  ✓ Accurately measures and frames retro Unicode symbols');
+
   console.log('\n✅ All ANSI Utility tests passed!\n');
 }
 

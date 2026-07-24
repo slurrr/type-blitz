@@ -44,6 +44,9 @@ export class TypeBlitzWebApp {
     this.adapter = new WebTerminalAdapter(container, () => {
       this.render();
     });
+    this.adapter.setOnResize(() => {
+      this.render();
+    });
 
     this.adapter.onKey((keyStr, keyEvent) => this.handleInput(keyStr, keyEvent));
     this.render();

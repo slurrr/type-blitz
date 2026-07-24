@@ -14,8 +14,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow-x: auto;
-  overflow-y: hidden;
+  overflow: hidden;
   background-image: 
     radial-gradient(circle at 50% 30%, #20003b 0%, #060214 70%),
     linear-gradient(rgba(255, 0, 180, 0.05) 1px, transparent 1px),
@@ -30,7 +29,6 @@ body {
   gap: 12px;
   width: 95vw;
   max-width: 1050px;
-  min-width: 780px;
 }
 
 .header-branding {
@@ -58,7 +56,6 @@ body {
 .crt-container {
   position: relative;
   width: 100%;
-  min-width: 780px;
   height: 580px;
   border: 3px solid #ff00b4;
   border-radius: 8px;

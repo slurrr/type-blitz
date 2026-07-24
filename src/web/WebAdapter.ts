@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css';
 export class WebTerminalAdapter {
   private term: Terminal;
   private fitAddon: FitAddon;
+  private onResizeCallback?: () => void;
 
   constructor(container: HTMLElement, onReady?: () => void) {
     this.term = new Terminal({
@@ -21,7 +22,7 @@ export class WebTerminalAdapter {
       theme: {
         background: '#050014',
         foreground: '#00f0ff',
-        cursor: '#050014', // Invisible cursor so it doesn't leave a pink block artifact at end of frame line
+        cursor: '#050014',
         selectionBackground: '#ff00b433',
         black: '#000000',
         red: '#ff2846',
@@ -46,17 +47,20 @@ export class WebTerminalAdapter {
     this.term.loadAddon(this.fitAddon);
     this.term.open(container);
 
-    const fitAndFocus = () => {
+    const fitAndNotify = () => {
       try {
         this.fitAddon.fit();
       } catch {
         // Fallback
       }
       this.term.focus();
+      if (this.onResizeCallback) {
+        this.onResizeCallback();
+      }
     };
 
     setTimeout(() => {
-      fitAndFocus();
+      fitAndNotify();
       if (onReady) onReady();
     }, 100);
 
@@ -65,8 +69,12 @@ export class WebTerminalAdapter {
     });
 
     window.addEventListener('resize', () => {
-      fitAndFocus();
+      fitAndNotify();
     });
+  }
+
+  public setOnResize(callback: () => void): void {
+    this.onResizeCallback = callback;
   }
 
   public writeFrame(lines: string[]): void {
@@ -98,6 +106,6 @@ export class WebTerminalAdapter {
   }
 
   public getDimensions(): { cols: number; rows: number } {
-    return { cols: Math.max(80, this.term.cols || 80), rows: Math.max(25, this.term.rows || 25) };
+    return { cols: this.term.cols || 80, rows: this.term.rows || 25 };
   }
 }
