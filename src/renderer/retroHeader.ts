@@ -1,36 +1,34 @@
-import figlet from 'figlet';
 import { Palette, getTerminalDimensions } from './ansi.js';
 import { visibleLength, formatFramedLine } from './ansiUtils.js';
+
+const RAW_BANNER_LINES = [
+  "  ________  ______  ______     ____  __    _______________",
+  " /_  __/\\ \\/ / __ \\/ ____/    / __ )/ /   /  _/_  __/__  /",
+  "  / /    \\  / /_/ / __/______/ __  / /    / /  / /    / / ",
+  " / /     / / ____/ /__/_____/ /_/ / /____/ /  / /    / /__",
+  "/_/     /_/_/   /_____/    /_____/_____/___/ /_/    /____/"
+];
 
 let cachedBanner: string[] | null = null;
 
 export function getRetroBanner(): string[] {
   if (cachedBanner) return cachedBanner;
-  try {
-    const raw = figlet.textSync('TYPE-BLITZ', { font: 'Slant' });
-    const lines = raw.split('\n');
-    cachedBanner = lines.map(line => {
-      let colored = '';
-      for (let i = 0; i < line.length; i++) {
-        const char = line[i];
-        const ratio = i / Math.max(1, line.length);
-        if (ratio < 0.5) {
-          colored += Palette.cyan(char);
-        } else {
-          colored += Palette.magenta(char);
-        }
+
+  cachedBanner = RAW_BANNER_LINES.map(line => {
+    let colored = '';
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const ratio = i / Math.max(1, line.length);
+      if (ratio < 0.5) {
+        colored += Palette.cyan(char);
+      } else {
+        colored += Palette.magenta(char);
       }
-      return colored;
-    });
-    return cachedBanner;
-  } catch {
-    return [
-      Palette.cyan('  _____ _   _ ___ _____ _____ ___ _     ___ _____ _____ '),
-      Palette.magenta(' |_   _| | | |  _|_   _|  ___/  _(_)   |_ _|_   _|__  / '),
-      Palette.magenta('   | | | |_| |  _| | | |  |_ |  _| |    | |  | |   / /  '),
-      Palette.cyan('   |_|  \\___/|_|   |_| |____|_| |_|___ |___| |_|  /____|')
-    ];
-  }
+    }
+    return colored;
+  });
+
+  return cachedBanner;
 }
 
 export function renderHeader(passageTitle?: string, author?: string, customCols?: number): string[] {
@@ -39,7 +37,7 @@ export function renderHeader(passageTitle?: string, author?: string, customCols?
   const result: string[] = [];
 
   // Top Neon Line
-  const titleText = ' ❖ SYNTHWAVE ' + (passageTitle ? `| ${passageTitle.toUpperCase()} by ${author?.toUpperCase()} ` : '') + '❖ ';
+  const titleText = ' [ SYNTHWAVE ] ' + (passageTitle ? `| ${passageTitle.toUpperCase()} by ${author?.toUpperCase()} ` : '') + '[ 1984 ] ';
   const titleVisLen = visibleLength(titleText);
   const padLength = Math.max(0, cols - titleVisLen - 2);
   const leftPad = '═'.repeat(Math.floor(padLength / 2));
@@ -59,7 +57,7 @@ export function renderHeader(passageTitle?: string, author?: string, customCols?
   }
 
   // 80s Perspective Grid line accent
-  const gridSegment = Palette.magenta('▲') + Palette.cyan('─') + Palette.magenta('▼') + Palette.cyan('─');
+  const gridSegment = Palette.magenta('^') + Palette.cyan('-') + Palette.magenta('v') + Palette.cyan('-');
   const repeats = Math.floor((cols - 2) / 4);
   const repeatedGrid = gridSegment.repeat(repeats);
   const gridRow = formatFramedLine(Palette.neonBorder('║'), repeatedGrid, Palette.neonBorder('║'), cols);

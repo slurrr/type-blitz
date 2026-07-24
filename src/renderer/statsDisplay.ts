@@ -5,12 +5,12 @@ import { LITERARY_PASSAGES } from '../passages/passages.js';
 import { visibleLength, formatFramedLine } from './ansiUtils.js';
 
 export function calculateGrade(wpm: number, accuracy: number): { grade: string; title: string } {
-  if (wpm >= 100 && accuracy >= 97) return { grade: 'S+', title: '⚡ CYBER GOD ⚡' };
-  if (wpm >= 80 && accuracy >= 95) return { grade: 'A+', title: '🔥 SYNTH SPEEDSTER 🔥' };
-  if (wpm >= 60 && accuracy >= 90) return { grade: 'A', title: '🚀 TURBO TYPIST 🚀' };
-  if (wpm >= 40 && accuracy >= 85) return { grade: 'B', title: '🕹️ NEON CRUISER 🕹️' };
-  if (wpm >= 25 && accuracy >= 75) return { grade: 'C', title: '📼 RETRO TYPER 📼' };
-  return { grade: 'D', title: '💾 CASSETTE SLOWPOKE 💾' };
+  if (wpm >= 100 && accuracy >= 97) return { grade: 'S+', title: 'CYBER GOD' };
+  if (wpm >= 80 && accuracy >= 95) return { grade: 'A+', title: 'SYNTH SPEEDSTER' };
+  if (wpm >= 60 && accuracy >= 90) return { grade: 'A', title: 'TURBO TYPIST' };
+  if (wpm >= 40 && accuracy >= 85) return { grade: 'B', title: 'NEON CRUISER' };
+  if (wpm >= 25 && accuracy >= 75) return { grade: 'C', title: 'RETRO TYPER' };
+  return { grade: 'D', title: 'CASSETTE SLOWPOKE' };
 }
 
 export function renderInitialsEntryView(initials: string[], activeSlot: number, statsWpm: number, customCols?: number): string[] {
@@ -21,7 +21,7 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  const badge = Palette.neonOrangeBg(' ★ NEW HIGH SCORE RECORD! ★ ');
+  const badge = Palette.neonOrangeBg(' *** NEW HIGH SCORE RECORD! *** ');
   const badgeLen = visibleLength(badge);
   const badgeMargin = Math.max(0, Math.floor((innerWidth - badgeLen) / 2));
   const badgeLine = ' '.repeat(badgeMargin) + badge;
@@ -48,7 +48,7 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
   result.push(formatFramedLine(Palette.neonBorder('║'), boxesContent, Palette.neonBorder('║'), cols));
 
   const arrowSpacing = activeSlot === 0 ? 5 : activeSlot === 1 ? 14 : 23;
-  const arrowLine = ' '.repeat(arrowSpacing) + Palette.yellow('▲');
+  const arrowLine = ' '.repeat(arrowSpacing) + Palette.yellow('^');
   const arrowContent = ' '.repeat(boxesMargin) + arrowLine;
   result.push(formatFramedLine(Palette.neonBorder('║'), arrowContent, Palette.neonBorder('║'), cols));
 
@@ -74,13 +74,13 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean, c
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
   result.push(formatFramedLine(Palette.neonBorder('║'), '', Palette.neonBorder('║'), cols));
 
-  const scoreHeader = Palette.yellow('═══ RUN COMPLETED ═══');
+  const scoreHeader = Palette.yellow('=== RUN COMPLETED ===');
   const scoreHeadVis = visibleLength(scoreHeader);
   const scoreHeadMargin = Math.max(0, Math.floor((innerWidth - scoreHeadVis) / 2));
   result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(scoreHeadMargin) + scoreHeader, Palette.neonBorder('║'), cols));
 
   if (isNewHighScore) {
-    const hsBadge = Palette.neonOrangeBg(' ★ QUALIFIES FOR TOP 100 ARCADE LEADERBOARD! ★ ');
+    const hsBadge = Palette.neonOrangeBg(' *** QUALIFIES FOR TOP 100 ARCADE LEADERBOARD! *** ');
     const hsVis = visibleLength(hsBadge);
     const hsMargin = Math.max(0, Math.floor((innerWidth - hsVis) / 2));
     result.push(formatFramedLine(Palette.neonBorder('║'), ' '.repeat(hsMargin) + hsBadge, Palette.neonBorder('║'), cols));
@@ -124,12 +124,12 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean, cus
   const result: string[] = [];
 
   const options = [
-    '⚡ QUICK PLAY (RANDOM CLASSIC LITERATURE)',
-    '📚 SELECT PASSAGE BY AUTHOR / WORK',
-    '✍️  ENTER CUSTOM TEXT',
-    '🏆 ARCADE HIGH SCORES (TOP 100)',
-    `🔊 SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
-    '❌ EXIT GAME'
+    '[1] QUICK PLAY (RANDOM CLASSIC LITERATURE)',
+    '[2] SELECT PASSAGE BY AUTHOR / WORK',
+    '[3] ENTER CUSTOM TEXT',
+    '[4] ARCADE HIGH SCORES (TOP 100)',
+    `[5] SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
+    '[6] EXIT GAME'
   ];
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
@@ -137,7 +137,7 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean, cus
 
   options.forEach((opt, idx) => {
     const isSelected = idx === selectedIndex;
-    const prefix = isSelected ? Palette.neonOrangeFg(' ➤ ') : '   ';
+    const prefix = isSelected ? Palette.neonOrangeFg(' > ') : '   ';
     const label = isSelected ? Palette.neonOrangeBg(` ${opt} `) : Palette.brightWhite(opt);
     const line = prefix + label;
     const plainLen = visibleLength(line);
@@ -167,7 +167,7 @@ export function renderPassageSelectView(selectedIndex: number, customCols?: numb
 
   LITERARY_PASSAGES.forEach((p, idx) => {
     const isSelected = idx === selectedIndex;
-    const prefix = isSelected ? Palette.neonOrangeFg('► ') : '  ';
+    const prefix = isSelected ? Palette.neonOrangeFg(' > ') : '   ';
     const titleStr = `${p.title} (${p.year}) - ${p.author}`;
     const formatted = isSelected ? Palette.neonOrangeBg(` ${titleStr} `) : Palette.cyan(titleStr);
     const fullLine = prefix + formatted + Palette.dim(` [${p.genre}]`);

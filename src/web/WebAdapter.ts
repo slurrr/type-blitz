@@ -8,17 +8,20 @@ export class WebTerminalAdapter {
 
   constructor(container: HTMLElement, onReady?: () => void) {
     this.term = new Terminal({
-      cursorBlink: true,
+      cursorBlink: false,
+      cursorStyle: 'bar',
+      cursorWidth: 0,
       cols: 80,
       rows: 25,
       convertEol: true,
+      customGlyphs: true,
       fontFamily: "'Fira Code', 'Courier New', monospace",
       fontSize: 14,
       lineHeight: 1.2,
       theme: {
         background: '#050014',
         foreground: '#00f0ff',
-        cursor: '#ff00b4',
+        cursor: '#050014', // Invisible cursor so it doesn't leave a pink block artifact at end of frame line
         selectionBackground: '#ff00b433',
         black: '#000000',
         red: '#ff2846',
@@ -67,8 +70,8 @@ export class WebTerminalAdapter {
   }
 
   public writeFrame(lines: string[]): void {
-    // Standard terminal screen clear + cursor home
-    this.term.write('\x1b[2J\x1b[3J\x1b[H');
+    // Hide cursor (\x1b[?25l) + clear screen + home position
+    this.term.write('\x1b[?25l\x1b[2J\x1b[3J\x1b[H');
     this.term.write(lines.join('\r\n'));
   }
 
