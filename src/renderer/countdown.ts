@@ -4,7 +4,7 @@ import { playBeep } from '../sound/audio.js';
 
 export function renderCountdownFrame(count: number | string): string[] {
   const { cols } = getTerminalDimensions();
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
   let bigText = '';

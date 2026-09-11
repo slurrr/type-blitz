@@ -11,7 +11,7 @@ export function renderStreamView(engine: GameEngine): string[] {
   const stats = engine.getStats();
 
   // Width of internal content inside border
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const centerX = Math.floor(innerWidth / 2);
 
   // Determine current active focal position in the text

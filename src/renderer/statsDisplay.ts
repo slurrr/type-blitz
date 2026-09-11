@@ -14,7 +14,7 @@ export function calculateGrade(wpm: number, accuracy: number): { grade: string; 
 
 export function renderInitialsEntryView(initials: string[], activeSlot: number, statsWpm: number): string[] {
   const { cols } = getTerminalDimensions();
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
@@ -63,7 +63,7 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
 
 export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): string[] {
   const { cols } = getTerminalDimensions();
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
   const stats = engine.getStats();
   const gradeInfo = calculateGrade(stats.wpm, stats.accuracy);
@@ -118,7 +118,7 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
 
 export function renderMenuView(selectedIndex: number, soundEnabled: boolean): string[] {
   const { cols } = getTerminalDimensions();
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
   const options = [
@@ -156,7 +156,7 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean): st
 
 export function renderPassageSelectView(selectedIndex: number): string[] {
   const { cols } = getTerminalDimensions();
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
@@ -192,7 +192,7 @@ export function renderHighScoresView(
   maxVisibleRows: number = 10
 ): string[] {
   const { cols } = getTerminalDimensions();
-  const innerWidth = Math.max(20, cols - 4);
+  const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));

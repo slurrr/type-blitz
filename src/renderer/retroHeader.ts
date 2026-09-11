@@ -40,7 +40,7 @@ export function renderHeader(passageTitle?: string, author?: string): string[] {
 
   // Top Neon Line
   const titleText = ' ❖ SYNTHWAVE ' + (passageTitle ? `| ${passageTitle.toUpperCase()} by ${author?.toUpperCase()} ` : '') + '❖ ';
-  const padLength = Math.max(0, cols - titleText.length - 4);
+  const padLength = Math.max(0, cols - titleText.length - 2);
   const leftPad = '═'.repeat(Math.floor(padLength / 2));
   const rightPad = '═'.repeat(Math.ceil(padLength / 2));
 
@@ -60,7 +60,12 @@ export function renderHeader(passageTitle?: string, author?: string): string[] {
   // 80s Perspective Grid line accent
   const gridSegment = Palette.magenta('▲') + Palette.cyan('─') + Palette.magenta('▼') + Palette.cyan('─');
   const repeats = Math.floor((cols - 2) / 4);
-  const gridRow = Palette.neonBorder('║') + gridSegment.repeat(repeats).padEnd(cols - 2) + Palette.neonBorder('║');
+  const remainder = (cols - 2) - repeats * 4;
+  let gridContent = gridSegment.repeat(repeats);
+  if (remainder >= 1) gridContent += Palette.magenta('▲');
+  if (remainder >= 2) gridContent += Palette.cyan('─');
+  if (remainder >= 3) gridContent += Palette.magenta('▼');
+  const gridRow = Palette.neonBorder('║') + gridContent + Palette.neonBorder('║');
   result.push(gridRow);
 
   return result;
@@ -71,7 +76,7 @@ export function renderFooter(controlsHelp: string): string[] {
   const result: string[] = [];
 
   const helpText = ` [ ${controlsHelp} ] `;
-  const padLength = Math.max(0, cols - helpText.length - 4);
+  const padLength = Math.max(0, cols - helpText.length - 2);
   const leftPad = '═'.repeat(Math.floor(padLength / 2));
   const rightPad = '═'.repeat(Math.ceil(padLength / 2));
 
