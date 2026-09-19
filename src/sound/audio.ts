@@ -16,13 +16,21 @@ let currentMusicProcess: ChildProcess | null = null;
 let currentMusicType: MusicType = 'NONE';
 let musicGeneration = 0;
 let synthSoundsInitialized = false;
+let synthSoundInitializationFailed = false;
 let commandSequence = 0;
 let browserAudioAvailable = true;
 
-function ensureSounds(): void {
-  if (synthSoundsInitialized) return;
-  generateAllSynthSounds();
-  synthSoundsInitialized = true;
+function ensureSounds(): boolean {
+  if (synthSoundsInitialized) return true;
+  if (synthSoundInitializationFailed) return false;
+  try {
+    generateAllSynthSounds();
+    synthSoundsInitialized = true;
+    return true;
+  } catch {
+    synthSoundInitializationFailed = true;
+    return false;
+  }
 }
 
 function browserAudioFd(): number | undefined {
@@ -74,8 +82,11 @@ function spawnLocalPlayer(filePath: string, onSpawn: (child: ChildProcess) => vo
 }
 
 function playOneShot(filename: string): void {
-  ensureSounds();
-  if (sendBrowserCommand({ type: 'play', playbackId: `effect-${commandSequence + 1}`, asset: filename, loop: false })) return;
+  if (!ensureSounds()) return;
+  if (browserAudioFd() !== undefined) {
+    sendBrowserCommand({ type: 'play', playbackId: `effect-${commandSequence + 1}`, asset: filename, loop: false });
+    return;
+  }
 
   spawnLocalPlayer(
     path.join(SOUND_DIR, filename),
@@ -116,10 +127,13 @@ function startMusic(type: Exclude<MusicType, 'NONE'>, filename: string, enabled:
   if (currentMusicType === type) return;
 
   stopMusic();
-  ensureSounds();
+  if (!ensureSounds()) return;
   currentMusicType = type;
   const generation = musicGeneration;
-  if (sendBrowserCommand({ type: 'play', playbackId: 'music', asset: filename, loop: true })) return;
+  if (browserAudioFd() !== undefined) {
+    sendBrowserCommand({ type: 'play', playbackId: 'music', asset: filename, loop: true });
+    return;
+  }
   startLocalMusic(filename, generation);
 }
 
