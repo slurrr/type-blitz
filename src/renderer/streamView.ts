@@ -1,5 +1,6 @@
 import { Palette, getTerminalDimensions } from './ansi.js';
 import { GameEngine } from '../engine/gameEngine.js';
+import { normalizeFramedLines } from './displayWidth.js';
 
 export function renderStreamView(engine: GameEngine): string[] {
   const { cols } = getTerminalDimensions();
@@ -91,5 +92,5 @@ export function renderStreamView(engine: GameEngine): string[] {
 
   result.push(Palette.neonBorder('║') + leftStatusPad + statusText + rightStatusPad + Palette.neonBorder('║'));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }

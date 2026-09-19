@@ -2,6 +2,7 @@ import { GameEngine } from '../engine/gameEngine.js';
 import { Palette, getTerminalDimensions } from './ansi.js';
 import { HighScoreRecord } from '../types.js';
 import { LITERARY_PASSAGES } from '../passages/passages.js';
+import { normalizeFramedLines } from './displayWidth.js';
 
 export function calculateGrade(wpm: number, accuracy: number): { grade: string; title: string } {
   if (wpm >= 100 && accuracy >= 97) return { grade: 'S+', title: 'CYBER GOD' };
@@ -58,7 +59,7 @@ export function renderInitialsEntryView(initials: string[], activeSlot: number, 
   const helpMargin = Math.max(0, Math.floor((innerWidth - helpPlain) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(helpMargin) + help + ' '.repeat(Math.max(0, innerWidth - helpPlain - helpMargin)) + Palette.neonBorder('║'));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }
 
 export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): string[] {
@@ -113,7 +114,7 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
   const promptMargin = Math.max(0, Math.floor((innerWidth - promptPlain) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(promptMargin) + promptText + ' '.repeat(Math.max(0, innerWidth - promptPlain - promptMargin)) + Palette.neonBorder('║'));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }
 
 export function renderMenuView(selectedIndex: number, soundEnabled: boolean): string[] {
@@ -146,12 +147,12 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean): st
   result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
-  const navHelp = Palette.dim('Use [UP/DOWN] or [1-6] to Select  |  [ENTER/SPACE] to Confirm');
+  const navHelp = Palette.dim('NEON REFLEXES READY // CHOOSE YOUR RUN');
   const navPlain = navHelp.replace(/\x1b\[[0-9;]*m/g, '').length;
   const navMargin = Math.max(0, Math.floor((innerWidth - navPlain) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(navMargin) + navHelp + ' '.repeat(Math.max(0, innerWidth - navPlain - navMargin)) + Palette.neonBorder('║'));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }
 
 export function renderPassageSelectView(selectedIndex: number): string[] {
@@ -183,7 +184,7 @@ export function renderPassageSelectView(selectedIndex: number): string[] {
   const snippetPlain = snippet.replace(/\x1b\[[0-9;]*m/g, '').length;
   result.push(Palette.neonBorder('║') + Palette.dim(snippet.padEnd(innerWidth)).slice(0, innerWidth + (snippet.length - snippetPlain)) + Palette.neonBorder('║'));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }
 
 export function renderHighScoresView(
@@ -229,5 +230,5 @@ export function renderHighScoresView(
   const margin = Math.max(0, Math.floor((innerWidth - helpText.length) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(margin) + Palette.green(helpText) + ' '.repeat(Math.max(0, innerWidth - helpText.length - margin)) + Palette.neonBorder('║'));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }

@@ -1,6 +1,7 @@
 import figlet from 'figlet';
 import { Palette, getTerminalDimensions } from './ansi.js';
 import { playBeep } from '../sound/audio.js';
+import { normalizeFramedLines } from './displayWidth.js';
 
 export function renderCountdownFrame(count: number | string): string[] {
   const { cols } = getTerminalDimensions();
@@ -44,7 +45,7 @@ export function renderCountdownFrame(count: number | string): string[] {
   result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }
 
 export async function runCountdownSequence(

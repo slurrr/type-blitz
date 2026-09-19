@@ -4,7 +4,7 @@ import os from 'node:os';
 
 const SAMPLE_RATE = 22050; // 22.05 kHz 16-bit mono for crisp retro 80s chiptune sound
 
-export const SOUND_DIR = path.join(os.homedir(), '.cache', 'type-blitz', 'sounds');
+export const SOUND_DIR = process.env.TYPE_BLITZ_SOUND_DIR || path.join(os.homedir(), '.cache', 'type-blitz', 'sounds');
 
 function createWavHeader(dataSize: number): Buffer {
   const buffer = Buffer.alloc(44);

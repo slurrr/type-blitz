@@ -6,6 +6,7 @@ import { GameEngine } from './engine/gameEngine.js';
 import { ANSI, Palette, getTerminalDimensions } from './renderer/ansi.js';
 import { renderHeader, renderFooter } from './renderer/retroHeader.js';
 import { renderStreamView } from './renderer/streamView.js';
+import { normalizeFramedLines } from './renderer/displayWidth.js';
 import { runCountdownSequence } from './renderer/countdown.js';
 import {
   renderMenuView,
@@ -24,7 +25,8 @@ import {
   playTop10Applause,
   startMenuMusic,
   startGameplayMusic,
-  stopMusic
+  stopMusic,
+  stopAllAudio
 } from './sound/audio.js';
 
 class TypeBlitzApp {
@@ -68,6 +70,7 @@ class TypeBlitzApp {
 
     process.on('SIGINT', () => this.cleanupAndExit());
     process.on('SIGTERM', () => this.cleanupAndExit());
+    process.on('SIGHUP', () => this.cleanupAndExit());
 
     // Start background chill menu music loop
     startMenuMusic(this.config.soundEnabled);
@@ -76,7 +79,7 @@ class TypeBlitzApp {
   }
 
   private cleanupAndExit(): void {
-    stopMusic();
+    stopAllAudio();
     process.stdout.write(ANSI.showCursor);
     process.stdout.write(ANSI.reset + '\n');
     if (process.stdin.isTTY) {
@@ -180,7 +183,7 @@ class TypeBlitzApp {
     result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
     result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
-    return result;
+    return normalizeFramedLines(result, cols);
   }
 
   private async startCountdownAndGame(): Promise<void> {

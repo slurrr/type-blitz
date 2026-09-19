@@ -1,5 +1,6 @@
 import figlet from 'figlet';
 import { Palette, getTerminalDimensions } from './ansi.js';
+import { normalizeFramedLines } from './displayWidth.js';
 
 let cachedBanner: string[] | null = null;
 
@@ -68,7 +69,7 @@ export function renderHeader(passageTitle?: string, author?: string): string[] {
   const gridRow = Palette.neonBorder('║') + gridContent + Palette.neonBorder('║');
   result.push(gridRow);
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }
 
 export function renderFooter(controlsHelp: string): string[] {
@@ -82,5 +83,5 @@ export function renderFooter(controlsHelp: string): string[] {
 
   result.push(Palette.neonBorder(`╚${leftPad}`) + Palette.green(helpText) + Palette.neonBorder(`${rightPad}╝`));
 
-  return result;
+  return normalizeFramedLines(result, cols);
 }

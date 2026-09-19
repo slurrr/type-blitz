@@ -79,6 +79,18 @@ type-blitz --passage dune
 
 ---
 
+## Browser terminal integration
+
+The game remains a normal native terminal application. The companion browser host at
+`/home/poop/code/dev/type-blitz-terminal-web` launches the built CLI in a PTY and uses:
+
+- `TYPE_BLITZ_SCORES_FILE` to keep browser-session scores separate from personal scores.
+- `TYPE_BLITZ_SOUND_DIR` to place generated WAV assets in the browser runtime directory.
+- `TYPE_BLITZ_AUDIO_FD` (an inherited descriptor) for newline-delimited generic audio commands.
+
+Without `TYPE_BLITZ_AUDIO_FD`, audio plays locally as before. Local playback now owns and
+stops only the children it launches; it never uses broad process-name matching.
+
 ## 📦 Machine Layout Contract (`AGENTS.md`)
 
 - **Source Code**: `/home/poop/code/dev/type-blitz`
