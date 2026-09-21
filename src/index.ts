@@ -29,14 +29,6 @@ import {
   stopAllAudio
 } from './sound/audio.js';
 
-function writeFrame(lines: string[]): void {
-  // Keep a terminal repaint's clear and content in one native output boundary.
-  // The browser terminal still owns presentation and may split transport packets.
-  process.stdout.write(
-    ANSI.synchronizedOutputStart + ANSI.clearScreen + lines.join('\n') + ANSI.synchronizedOutputEnd
-  );
-}
-
 class TypeBlitzApp {
   private state: GameState = 'MENU';
   private currentPassage: Passage;
@@ -169,7 +161,8 @@ class TypeBlitzApp {
 
     frameLines.push(...renderFooter(helpStr));
 
-    writeFrame(frameLines);
+    process.stdout.write(ANSI.clearScreen);
+    process.stdout.write(frameLines.join('\n'));
   }
 
   private renderCustomInputView(): string[] {
@@ -206,7 +199,8 @@ class TypeBlitzApp {
       const footerLines = renderFooter('GET READY TO TYPE!');
 
       const fullScreen = [...headerLines, ...countdownLines, ...footerLines];
-      writeFrame(fullScreen);
+      process.stdout.write(ANSI.clearScreen);
+      process.stdout.write(fullScreen.join('\n'));
     }, false); // Audio handled in loop callback
 
     this.isCountingDown = false;
