@@ -5,6 +5,7 @@ import { renderHeader, renderFooter } from '../renderer/retroHeader.js';
 import { renderMenuView, renderPassageSelectView, renderHighScoresView, renderInitialsEntryView } from '../renderer/statsDisplay.js';
 import { renderCountdownFrame } from '../renderer/countdown.js';
 import { stripAnsi, visibleWidth } from '../renderer/displayWidth.js';
+import { ANSI, renderTerminalFrame } from '../renderer/ansi.js';
 
 function runRendererTests() {
   console.log('🧪 Running Stream View Highlighting Verification Tests...\n');
@@ -47,6 +48,11 @@ function runRendererTests() {
       for (const line of screen) assert.strictEqual(visibleWidth(line), columns, `line must fit ${columns} columns: ${stripAnsi(line)}`);
     }
   }
+
+  const frame = renderTerminalFrame(['long screen', 'final row']);
+  assert.ok(frame.startsWith(ANSI.moveTo(1, 1)), 'frame should replace content from terminal home');
+  assert.ok(frame.endsWith(ANSI.eraseToEnd), 'frame should erase stale rows from a taller prior screen');
+  assert.ok(!frame.includes(ANSI.clearScreen), 'frame should not blank the terminal before replacement content');
 
   const menuText = stripAnsi(renderMenuView(0, true).join('\n'));
   assert.ok(menuText.includes('NEON REFLEXES READY'));

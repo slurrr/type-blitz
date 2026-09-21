@@ -7,10 +7,15 @@ export const ANSI = {
   saveCursor: '\x1b[s',
   restoreCursor: '\x1b[u',
   moveTo: (row: number, col: number) => `\x1b[${row};${col}H`,
+  eraseToEnd: '\x1b[J',
   clearLine: '\x1b[2K',
   reset: '\x1b[0m',
   beep: '\x07'
 };
+
+export function renderTerminalFrame(lines: string[]): string {
+  return ANSI.moveTo(1, 1) + lines.join('\n') + ANSI.eraseToEnd;
+}
 
 export const Palette = {
   neonOrangeBg: chalk.bgRgb(255, 110, 0).rgb(0, 0, 0).bold,

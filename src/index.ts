@@ -3,7 +3,7 @@ import { Command } from 'commander';
 import { Passage, GameState, GameConfig } from './types.js';
 import { LITERARY_PASSAGES, getRandomPassage, getPassageById } from './passages/passages.js';
 import { GameEngine } from './engine/gameEngine.js';
-import { ANSI, Palette, getTerminalDimensions } from './renderer/ansi.js';
+import { ANSI, Palette, getTerminalDimensions, renderTerminalFrame } from './renderer/ansi.js';
 import { renderHeader, renderFooter } from './renderer/retroHeader.js';
 import { renderStreamView } from './renderer/streamView.js';
 import { normalizeFramedLines } from './renderer/displayWidth.js';
@@ -161,8 +161,7 @@ class TypeBlitzApp {
 
     frameLines.push(...renderFooter(helpStr));
 
-    process.stdout.write(ANSI.clearScreen);
-    process.stdout.write(frameLines.join('\n'));
+    process.stdout.write(renderTerminalFrame(frameLines));
   }
 
   private renderCustomInputView(): string[] {
@@ -199,8 +198,7 @@ class TypeBlitzApp {
       const footerLines = renderFooter('GET READY TO TYPE!');
 
       const fullScreen = [...headerLines, ...countdownLines, ...footerLines];
-      process.stdout.write(ANSI.clearScreen);
-      process.stdout.write(fullScreen.join('\n'));
+      process.stdout.write(renderTerminalFrame(fullScreen));
     }, false); // Audio handled in loop callback
 
     this.isCountingDown = false;
