@@ -2,6 +2,8 @@ import chalk from 'chalk';
 
 export const ANSI = {
   clearScreen: '\x1b[2J\x1b[3J\x1b[H',
+  synchronizedOutputStart: '\x1b[?2026h',
+  synchronizedOutputEnd: '\x1b[?2026l',
   hideCursor: '\x1b[?25l',
   showCursor: '\x1b[?25h',
   saveCursor: '\x1b[s',
