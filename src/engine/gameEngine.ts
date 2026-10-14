@@ -86,19 +86,16 @@ export class GameEngine {
     }
   }
 
-  public handleBackspace(): void {
-    if (this.isCompleted || this.typedInput.length === 0) return;
+  public handleBackspace(): 'erased' | 'blocked' | 'ignored' {
+    if (this.isCompleted || this.typedInput.length === 0) return 'ignored';
 
-    const wasInError = this.errorIndex !== -1;
+    // Correct letters ignite immediately and can never be restored. Only the
+    // frozen error suffix is erasable, regardless of the renderer's burn phase.
+    if (this.errorIndex === -1) return 'blocked';
+
     this.typedInput = this.typedInput.slice(0, -1);
-
-    // If backspaced to or before the error index, clear error mode
-    if (this.errorIndex !== -1 && this.typedInput.length <= this.errorIndex) {
-      this.errorIndex = -1;
-    } else if (!wasInError) {
-      // Backspaced a correctly typed character: decrement correctKeystrokes
-      this.correctKeystrokes = Math.max(0, this.correctKeystrokes - 1);
-    }
+    if (this.typedInput.length <= this.errorIndex) this.errorIndex = -1;
+    return 'erased';
   }
 
   public getStats(): GameStats {

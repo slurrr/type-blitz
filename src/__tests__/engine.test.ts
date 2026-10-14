@@ -20,6 +20,9 @@ function runTests() {
   }
   assert.strictEqual(engine.typedInput, 'Call');
   assert.strictEqual(engine.errorIndex, -1);
+  const beforeBlockedBackspace = { ...engine };
+  for (let i = 0; i < 5; i++) assert.strictEqual(engine.handleBackspace(), 'blocked');
+  assert.deepStrictEqual({ ...engine }, beforeBlockedBackspace, 'blocked backspace changes no input, counters or streak');
 
   // Test 2: Making a typo
   // Expected next is ' ', type 'x' instead
@@ -35,21 +38,48 @@ function runTests() {
   assert.strictEqual(engine.errorIndex, 4); // Error still at index 4
 
   // Test 4: Backspacing clears error state when reaching error index
-  engine.handleBackspace(); // 'Callx'
+  assert.strictEqual(engine.handleBackspace(), 'erased'); // 'Callx'
   assert.strictEqual(engine.errorIndex, 4);
-  engine.handleBackspace(); // 'Call'
+  assert.strictEqual(engine.handleBackspace(), 'erased'); // 'Call'
   assert.strictEqual(engine.errorIndex, -1); // Error cleared!
+  assert.strictEqual(engine.handleBackspace(), 'blocked');
+  assert.strictEqual(engine.typedInput, 'Call', 'backspace stops exactly at the correct prefix');
 
   // Test 5: Typing correct character after fixing error
   const correctSpace = engine.handleKey(' ');
   assert.strictEqual(correctSpace.isError, false);
   assert.strictEqual(engine.typedInput, 'Call ');
   assert.strictEqual(engine.errorIndex, -1);
+  assert.strictEqual(engine.handleBackspace(), 'blocked', 'correct spaces ignite too');
+  assert.strictEqual(engine.typedInput, 'Call ');
 
   // Test 6: WPM and Stats calculation
   const stats = engine.getStats();
   assert.ok(stats.totalCharsTyped > 0);
   assert.ok(stats.accuracy < 100); // Made 2 typos total
+
+  // Empty input and completed rounds are quiet no-ops. A first-key typo is erasable.
+  const short = new GameEngine({ ...passage, text: 'Hi' });
+  short.start();
+  const empty = { ...short };
+  assert.strictEqual(short.handleBackspace(), 'ignored');
+  assert.deepStrictEqual({ ...short }, empty);
+  short.handleKey('x');
+  short.handleKey('i'); // Matching expected char still belongs to the error cascade.
+  assert.strictEqual(short.handleBackspace(), 'erased');
+  assert.strictEqual(short.errorIndex, 0);
+  assert.strictEqual(short.handleBackspace(), 'erased');
+  assert.strictEqual(short.typedInput, '');
+  assert.strictEqual(short.errorIndex, -1);
+  short.handleKey('H');
+  assert.strictEqual(short.handleBackspace(), 'blocked');
+  assert.strictEqual(short.handleKey('i').completed, true);
+  const completed = { ...short };
+  assert.strictEqual(short.handleBackspace(), 'ignored');
+  assert.deepStrictEqual({ ...short }, completed);
+  short.start();
+  assert.strictEqual(short.typedInput, '', 'restart explicitly restores the passage');
+  assert.strictEqual(short.handleKey('H').isError, false);
 
   console.log('✅ All Game Engine Tests PASSED!\n');
 }

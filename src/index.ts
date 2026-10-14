@@ -426,8 +426,9 @@ class TypeBlitzApp {
     }
 
     if (key.name === 'backspace') {
-      this.engine.handleBackspace();
-      this.effects.rewind(this.engine.typedInput.length);
+      const result = this.engine.handleBackspace();
+      if (result === 'blocked') playBeep(this.config.soundEnabled);
+      if (result === 'erased') this.effects.rewind(this.engine.typedInput.length);
       this.render();
       return;
     }

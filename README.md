@@ -29,7 +29,7 @@
 4. **Fire & Ice Typing Effects**:
    - Correct letters ignite, erode into embers, and disappear while the stream keeps its spacing.
    - In Kitty, chunky arcade flame sprites and square embers rise above the text—flat neon colors, no realistic glow.
-   - Mistakes become cracked blue ice blocks. The whole error cascade stays frozen until you `Backspace` past the mistake.
+   - Mistakes become cracked blue ice blocks. `Backspace` clears the error cascade, but correctly typed letters are irreversible once ignited. Trying to erase one plays the wrong-key sound.
 5. **Classic Literature Database**:
    - Passages from *Moby-Dick*, *1984*, *Pride and Prejudice*, *The Great Gatsby*, *Frankenstein*, *Alice's Adventures in Wonderland*, *The Metamorphosis*, *Dracula*, *Dune*, *Fahrenheit 451*, and more.
    - Custom passage input mode (paste your own text).
@@ -87,7 +87,10 @@ retypes it. Start typing to take over; `Ctrl+R` replays the demo; `Esc` exits.
 - **Ice:** flat blue arcade tiles with chunky bevels, stepped cracks and a brief square-pixel
   frost burst. They persist until erased.
 - **Layout:** flames stay behind the cursor; upcoming text remains native terminal text.
-  Burned characters keep their space, and backspacing restores untyped passage text.
+  Burned characters keep their space. Backspace only erases frozen mistakes; it cannot
+  restore correct letters during flames, embers, crumble, or after they disappear.
+  Blocked backspaces use the wrong-key sound (when sound is enabled), without changing
+  score counters, accuracy or streak. Restart explicitly restores the passage.
 - **Implementation:** `@napi-rs/canvas` rasterizes glyph masks; the renderer erodes those
   masks and draws hard-edged flame sprites/ice tiles. Compressed RGBA goes directly through the
   [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/), with one
@@ -112,7 +115,7 @@ Run `npm test` for engine, layout, effect lifecycle/pixels/protocol, score and a
 | Key | Action |
 | --- | --- |
 | **Typing Keys** | Type characters matching the passage stream |
-| **Backspace** | Erase previous character / clear error state |
+| **Backspace** | Erase frozen mistakes only; stops at the last correct letter |
 | **UP / DOWN** | Navigate menu options & passage list |
 | **ENTER / SPACE** | Select menu option or start quick play |
 | **ESC** | Pause / Return to Main Menu |

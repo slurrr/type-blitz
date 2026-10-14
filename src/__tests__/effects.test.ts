@@ -44,8 +44,9 @@ assert.equal(effects.sample(engine, 80, 10000).length, 1);
 type('e', 11000);
 assert.equal(effects.sample(engine, 80, 11000)[1].progress, 0, 'correction gets a fresh burn');
 assert.equal(effects.sample(engine, 80, 11000)[0].progress, 1, 'rewind must not resurrect old ashes');
-engine.handleBackspace(); effects.rewind(engine.typedInput.length);
-assert.equal(effects.sample(engine, 80, 11100).length, 1, 'deleted glyph has no residual effects');
+assert.equal(engine.handleBackspace(), 'blocked');
+assert.equal(effects.sample(engine, 80, 11100).length, 2, 'corrected letter stays ignited and cannot be erased');
+assert.equal(effects.sample(engine, 80, 11100)[1].age, 100, 'blocked backspace does not reset ignition');
 
 engine.start(); effects.reset();
 assert.deepEqual(effects.sample(engine, 80, 12000), []);
@@ -54,8 +55,19 @@ const fast = effects.sample(engine, 40, 12000);
 assert.equal(fast.length, 19, 'only visible typed columns are painted');
 assert.ok(fast.slice(0, 3).every(cell => cell.progress === 1), 'burn finishes before reaching the edge');
 const edgeProgress = fast[3].progress;
-engine.handleBackspace(); effects.rewind(engine.typedInput.length);
+assert.equal(engine.handleBackspace(), 'blocked');
 assert.ok(effects.sample(engine, 80, 12000).find(cell => cell.index === fast[3].index)!.progress >= edgeProgress);
+
+// Backspace cannot resurrect a correct letter in any phase, including after it is gone.
+for (const age of [0, 500, FLAME_MS + 100, FLAME_MS + EMBER_MS + 700, BURN_MS + 100]) {
+  const lockedEngine = new GameEngine(passage);
+  const lockedEffects = new TypingEffects();
+  lockedEngine.start(); lockedEngine.handleKey('H'); lockedEffects.record(0, 0);
+  const before = lockedEffects.sample(lockedEngine, 80, age);
+  assert.equal(lockedEngine.handleBackspace(), 'blocked');
+  assert.equal(lockedEngine.typedInput, 'H');
+  assert.deepEqual(lockedEffects.sample(lockedEngine, 80, age), before, 'blocked rewind leaves the effect timeline untouched');
+}
 
 const painter = new EffectPainter();
 const size = { width: 12, height: 24 };

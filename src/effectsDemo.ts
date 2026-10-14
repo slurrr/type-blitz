@@ -24,8 +24,7 @@ function type(char: string): void {
   effects.record(index);
 }
 function backspace(): void {
-  engine.handleBackspace();
-  effects.rewind(engine.typedInput.length);
+  if (engine.handleBackspace() === 'erased') effects.rewind(engine.typedInput.length);
 }
 function reset(): void {
   engine.start(); effects.reset(); step = 0; next = performance.now() + 800;
