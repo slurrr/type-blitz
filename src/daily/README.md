@@ -47,6 +47,11 @@ npm run daily:preview -- compare 001 --model gpt-6-astra --thinking low,xhigh
 # Full three-voice matrix: 3 archived prompts x 2 efforts = 6 concurrent calls.
 npm run daily:preview -- compare 001,002,003 --model gpt-6-astra --thinking low,xhigh
 
+# Mixed-model matrix: 3 voices x 4 model/effort variants = 12 concurrent calls.
+npm run daily:preview -- compare 001,002,003 \
+  --variant gpt-5.6-sol:off --variant gpt-5.6-sol:xhigh \
+  --variant gpt-6.1-sol:low --variant gpt-6.1-sol:xhigh
+
 # Only when you actually want a new topic:
 npm run daily:preview -- collect --refresh
 ```
@@ -69,7 +74,9 @@ is no fallback or automatic retry. Each call times out after five minutes.
 The normal `generate` command is **sequential** for easier per-call timing comparisons.
 `compare IDS --model MODEL --thinking low,xhigh` is explicitly **concurrent**: one call
 per archived prompt x requested effort, with the exact saved instructions/source for
-each voice. Pass comma-separated IDs; duplicates are rejected before any calls. To
+each voice. For multiple models, repeat `--variant model:effort` instead of
+`--model`/`--thinking`; each voice runs once per variant. Mixing both forms or repeating
+a variant is rejected before calls. Pass comma-separated IDs; duplicates are also rejected. To
 fill an incomplete comparison, specify only the missing voices. IDs are reserved
 serially before calls start, and all calls/writes settle before releasing the lock.
 One failed model response does not discard the other result. Execution mode is recorded.
@@ -145,6 +152,7 @@ legacy files are never written again by the new CLI. No credentials are archived
 - `preview.ts`: frozen input, current editable prompts, prose validation/display.
 - `history.ts`: immutable attempts, migration, exact replay, sequential generation,
   explicit parallel comparisons, and reviews.
+- `variants.ts`: validates single-model or mixed-model comparison settings before calls.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
   A request contains shared + only its voice. No other voice's instructions/results.

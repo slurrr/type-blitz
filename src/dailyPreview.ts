@@ -5,7 +5,8 @@ import { collectReddit } from './daily/browser.js';
 import { createPiWriter, DEFAULT_MODEL, DEFAULT_THINKING } from './daily/pi.js';
 import { collectOnce, formatPacket, readPacket, sourceId, withPreviewLock } from './daily/preview.js';
 import { formatAttempt, formatPromptTable, formatTable, generateParallel, generateSequential, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket } from './daily/history.js';
-import { RATINGS, THINKING_LEVELS, VOICES, type Rating, type ThinkingLevel, type VoiceId } from './daily/types.js';
+import { RATINGS, THINKING_LEVELS, VOICES, type Rating, type VoiceId } from './daily/types.js';
+import { comparisonVariants } from './daily/variants.js';
 
 const program = new Command()
   .name('daily-preview')
@@ -101,26 +102,24 @@ program.command('review')
   });
 
 program.command('compare')
-  .description('CONCURRENT comparison of each archived prompt at each thinking level; generates new attempts')
+  .description('CONCURRENT comparison of each archived prompt across model/effort variants; generates new attempts')
   .argument('<ids>', 'source attempt IDs, e.g. 001 or 001,002,003')
-  .requiredOption('--model <id>', 'physical openai-codex model')
-  .option('--thinking <levels>', 'distinct comma-separated levels', 'low,xhigh')
+  .option('--model <id>', 'one physical openai-codex model')
+  .option('--thinking <levels>', 'comma-separated efforts for --model (default: low,xhigh)')
+  .option('--variant <model:thinking>', 'repeat for mixed-model comparisons; replaces --model/--thinking',
+    (value: string, previous: string[]) => [...previous, value], [])
   .action(async (idsText: string, options) => {
     const ids = idsText.split(',').map(parseId);
     if (new Set(ids).size !== ids.length) throw new Error('Duplicate source IDs would create accidental extra calls.');
-    const levels = String(options.thinking).split(',');
-    if (levels.length < 2 || new Set(levels).size !== levels.length ||
-        levels.some(level => !THINKING_LEVELS.includes(level as ThinkingLevel))) {
-      throw new Error('Choose at least two distinct thinking levels from off,low,medium,high,xhigh.');
-    }
+    const variants = comparisonVariants(options);
     const { dir } = program.opts();
     await withPreviewLock(dir, async () => {
       const preparationStart = performance.now();
       const seeds = await Promise.all(ids.map(async id => seedFromAttempt(await getAttempt(dir, id))));
-      const writers = await Promise.all(levels.map(level => createPiWriter(options.model, level as ThinkingLevel)));
+      const writers = await Promise.all(variants.map(v => createPiWriter(v.model, v.thinking)));
       const reviews = await readReviews(dir);
       const jobs = seeds.flatMap(seed => writers.map(writer => ({ seed, writer })));
-      console.log(`Comparing ${levels.join(' / ')} CONCURRENTLY on archived prompts ${ids.join(', ')}: ${jobs.length} calls. No Reddit requests.`);
+      console.log(`Comparing ${variants.map(v => v.model + ':' + v.thinking).join(' / ')} CONCURRENTLY on archived prompts ${ids.join(', ')}: ${jobs.length} calls. No Reddit requests.`);
       const batch = await generateParallel(dir, jobs, attempt => console.log(formatAttempt(attempt, reviews)));
       console.log(`\nComparison wall time: ${(batch.wallMs / 1000).toFixed(2)} s; with preparation: ${((performance.now() - preparationStart) / 1000).toFixed(2)} s.`);
       if (batch.attempts.some(a => a.status !== 'ready')) process.exitCode = 1;

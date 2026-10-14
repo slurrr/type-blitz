@@ -5,6 +5,24 @@ import { join } from 'node:path';
 import { buildRequest, sourceId, withPreviewLock } from '../daily/preview.js';
 import { attemptName, formatTable, generateAttempt, generateParallel, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket, summarizePrompts, writeOnce } from '../daily/history.js';
 import { VOICES, type PreviewSample, type SourcePacket, type VoiceId, type Writer } from '../daily/types.js';
+import { comparisonVariants } from '../daily/variants.js';
+
+assert.deepEqual(comparisonVariants({ model: 'gpt-6-astra' }), [
+  { model: 'gpt-6-astra', thinking: 'low' }, { model: 'gpt-6-astra', thinking: 'xhigh' }
+]);
+const mixed = ['gpt-5.6-sol:off', 'gpt-5.6-sol:xhigh', 'gpt-6.1-sol:low', 'gpt-6.1-sol:xhigh'];
+assert.deepEqual(comparisonVariants({ variant: mixed }), [
+  { model: 'gpt-5.6-sol', thinking: 'off' }, { model: 'gpt-5.6-sol', thinking: 'xhigh' },
+  { model: 'gpt-6.1-sol', thinking: 'low' }, { model: 'gpt-6.1-sol', thinking: 'xhigh' }
+]);
+assert.throws(() => comparisonVariants({}), /Choose/);
+assert.throws(() => comparisonVariants({ variant: ['missing-effort'] }), /model:thinking/);
+assert.throws(() => comparisonVariants({ variant: ['m:off', 'm:nope'] }), /Invalid/);
+assert.throws(() => comparisonVariants({ variant: ['m:off', 'm:off'] }), /Duplicate/);
+assert.throws(() => comparisonVariants({ model: 'm', thinking: 'low,low' }), /Duplicate/);
+assert.throws(() => comparisonVariants({ model: 'm', variant: mixed }), /not both/);
+assert.throws(() => comparisonVariants({ thinking: 'low', variant: mixed }), /not both/);
+assert.throws(() => comparisonVariants({ variant: ['m:low'] }), /at least two/);
 
 const packet: SourcePacket = {
   version: 1, feed: 'fixture', fetchedAt: '2026-10-14T00:00:00.000Z', selection: 'fixture', limitations: [],
@@ -118,7 +136,7 @@ try {
   let release!: () => void;
   const allStarted = new Promise<void>(resolve => { release = resolve; });
   const concurrentWriters: Writer[] = (['low', 'xhigh'] as const).map(thinking => ({
-    ...fake, thinking,
+    ...fake, thinking, model: 'fixture-' + thinking,
     async generate(request) {
       calls++;
       active++;
@@ -127,7 +145,7 @@ try {
       await allStarted;
       active--;
       if (thinking === 'low') throw new Error('one writer failed');
-      return { text: prose, model: fake.model, thinking,
+      return { text: prose, model: 'fixture-' + thinking, thinking,
         audit: { systemPrompt: request.systemPrompt, userPrompt: request.userPrompt,
           tools: [], messageRoles: ['user'], payloadVerified: true } };
     }
@@ -147,6 +165,7 @@ try {
   assert.equal(calls, 4, 'no automatic retry after comparison failures');
   assert.deepEqual(concurrent.attempts.map(a => a.attemptId), [7, 8, 9, 10], 'matrix calls get distinct reserved IDs');
   assert.deepEqual(concurrent.attempts.map(a => a.voice), ['student', 'student', 'blogger', 'blogger']);
+  assert.deepEqual(concurrent.attempts.map(a => a.model), ['fixture-low', 'fixture-xhigh', 'fixture-low', 'fixture-xhigh'], 'each job retains its own model');
   assert.deepEqual(concurrent.attempts.map(a => a.status), ['error', 'ready', 'error', 'ready']);
   assert.ok(concurrent.attempts.every(a => a.execution === 'parallel'));
   assert.deepEqual(concurrent.attempts[0].request, concurrent.attempts[1].request);
