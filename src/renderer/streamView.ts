@@ -1,18 +1,27 @@
 import { Palette, getTerminalDimensions } from './ansi.js';
 import { GameEngine } from '../engine/gameEngine.js';
 import { normalizeFramedLines } from './displayWidth.js';
+import { EffectCell, FLAME_ROWS, TypingEffects, renderEffectCharacter, renderTextFlames } from './typingEffects.js';
 
-export function renderStreamView(engine: GameEngine): string[] {
+export interface StreamEffectsOptions {
+  cells?: EffectCell[];
+  kitty?: boolean;
+  now?: number;
+}
+
+export function renderStreamView(engine: GameEngine, effects: StreamEffectsOptions = {}): string[] {
   const { cols } = getTerminalDimensions();
   const result: string[] = [];
 
   const text = engine.passage.text;
   const typed = engine.typedInput;
-  const errorIdx = engine.errorIndex;
   const stats = engine.getStats();
+  const now = effects.now ?? performance.now();
+  const cells = effects.cells ?? new TypingEffects().sample(engine, cols, now);
+  const cellsByIndex = new Map(cells.map(cell => [cell.index, cell]));
 
   // Width of internal content inside border
-  const innerWidth = Math.max(20, cols - 2);
+  const innerWidth = Math.max(0, cols - 2);
   const centerX = Math.floor(innerWidth / 2);
 
   // Determine current active focal position in the text
@@ -33,6 +42,11 @@ export function renderStreamView(engine: GameEngine): string[] {
   const targetArrowLine = ' '.repeat(leftTargetPad) + Palette.neonOrangeFg('▼ TARGET ▼') + ' '.repeat(Math.max(0, innerWidth - leftTargetPad - 10));
   result.push(Palette.neonBorder('║') + targetArrowLine + Palette.neonBorder('║'));
 
+  // Real graphics occupy these rows in Kitty; the text path gets a small flame fallback.
+  const flameLines = effects.kitty ? Array<string>(FLAME_ROWS).fill(' '.repeat(innerWidth))
+    : renderTextFlames(cells, innerWidth, now);
+  for (const line of flameLines) result.push(Palette.neonBorder('║') + line + Palette.neonBorder('║'));
+
   // Single Line Passage Stream rendering
   // Stream buffer generation for columns 0..innerWidth-1
   let streamLine = '';
@@ -46,15 +60,9 @@ export function renderStreamView(engine: GameEngine): string[] {
       streamLine += ' ';
     } else if (textIdx < typed.length) {
       // Already typed portion
-      if (errorIdx !== -1 && textIdx >= errorIdx) {
-        // Red Error Highlighter for error index and all subsequent keystrokes
-        const wrongChar = typed[textIdx] || (textIdx < text.length ? text[textIdx] : ' ');
-        streamLine += Palette.errorRedBg(wrongChar);
-      } else {
-        // Correctly typed -> Orange Highlighter Effect!
-        const correctChar = textIdx < text.length ? text[textIdx] : ' ';
-        streamLine += Palette.neonOrangeBg(correctChar);
-      }
+      const cell = cellsByIndex.get(textIdx);
+      // Kitty paints the actual eroding glyph / ice block at this exact cell.
+      streamLine += effects.kitty || !cell ? ' ' : renderEffectCharacter(cell);
     } else if (textIdx < text.length) {
       // Upcoming / not typed yet -> normal text with no background highlight
       const char = text[textIdx];

@@ -8,7 +8,7 @@ import { stripAnsi, visibleWidth } from '../renderer/displayWidth.js';
 import { ANSI, renderTerminalFrame } from '../renderer/ansi.js';
 
 function runRendererTests() {
-  console.log('🧪 Running Stream View Highlighting Verification Tests...\n');
+  console.log('🧪 Running Stream View and Border Verification Tests...\n');
 
   const mockPassage = {
     id: 'test',
@@ -22,7 +22,7 @@ function runRendererTests() {
   const engine = new GameEngine(mockPassage);
   engine.start();
 
-  // Initially: 0 typed chars. Output should have NO background highlight on 'H'
+  // Initially: 0 typed chars. The upcoming passage remains native terminal text.
   const initialView = renderStreamView(engine);
   const streamRowInitial = initialView.find(line => line.includes('Hello'));
   assert.ok(streamRowInitial, 'Stream row should render passage text');
@@ -58,7 +58,7 @@ function runRendererTests() {
   assert.ok(menuText.includes('NEON REFLEXES READY'));
   assert.ok(!menuText.includes('Use [UP/DOWN]'), 'menu body must not duplicate footer navigation');
 
-  console.log('✅ Stream View Highlighting and Border Tests PASSED!\n');
+  console.log('✅ Stream View and Border Tests PASSED!\n');
 }
 
 runRendererTests();

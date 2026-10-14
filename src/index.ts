@@ -6,6 +6,8 @@ import { GameEngine } from './engine/gameEngine.js';
 import { ANSI, Palette, getTerminalDimensions, renderTerminalFrame } from './renderer/ansi.js';
 import { renderHeader, renderFooter } from './renderer/retroHeader.js';
 import { renderStreamView } from './renderer/streamView.js';
+import { TypingEffects, EFFECT_FPS } from './renderer/typingEffects.js';
+import { KittyEffects, FLAME_ROW_OFFSET } from './renderer/kittyEffects.js';
 import { normalizeFramedLines } from './renderer/displayWidth.js';
 import { runCountdownSequence } from './renderer/countdown.js';
 import {
@@ -46,6 +48,10 @@ class TypeBlitzApp {
   private scoreRank: number = 0;
   private isCountingDown: boolean = false;
   private highScoreScrollOffset: number = 0;
+  private effects = new TypingEffects();
+  private graphics = new KittyEffects();
+  private animationTimer?: ReturnType<typeof setInterval>;
+  private previousFrame: string[] = [];
 
   private initialsInput: string[] = ['A', 'A', 'A'];
   private activeInitialsSlot: number = 0;
@@ -65,7 +71,14 @@ class TypeBlitzApp {
 
     process.stdout.write(ANSI.hideCursor);
 
-    process.stdout.on('resize', () => this.render());
+    process.stdout.on('resize', () => {
+      this.graphics.invalidateSize();
+      this.render();
+    });
+    this.animationTimer = setInterval(() => {
+      // Drop animation frames rather than queueing stale graphics behind a slow PTY.
+      if (this.state === 'PLAYING' && process.stdout.writableLength === 0) this.render(true);
+    }, 1000 / EFFECT_FPS);
     process.stdin.on('keypress', (str: string | undefined, key: readline.Key) => this.handleKeypress(str, key));
 
     process.on('SIGINT', () => this.cleanupAndExit());
@@ -80,7 +93,8 @@ class TypeBlitzApp {
 
   private cleanupAndExit(): void {
     stopAllAudio();
-    process.stdout.write(ANSI.showCursor);
+    clearInterval(this.animationTimer);
+    process.stdout.write(this.graphics.clear() + ANSI.showCursor);
     process.stdout.write(ANSI.reset + '\n');
     if (process.stdin.isTTY) {
       process.stdin.setRawMode(false);
@@ -88,13 +102,13 @@ class TypeBlitzApp {
     process.exit(0);
   }
 
-  private render(): void {
+  private render(animationOnly = false): void {
     if (this.isCountingDown) return;
 
     // Music control per state
-    if (this.state === 'PLAYING') {
+    if (!animationOnly && this.state === 'PLAYING') {
       startGameplayMusic(this.config.soundEnabled);
-    } else if (this.state === 'MENU' || this.state === 'PASSAGE_SELECT' || this.state === 'HIGH_SCORES' || this.state === 'INITIALS_ENTRY' || this.state === 'CUSTOM_INPUT') {
+    } else if (!animationOnly && (this.state === 'MENU' || this.state === 'PASSAGE_SELECT' || this.state === 'HIGH_SCORES' || this.state === 'INITIALS_ENTRY' || this.state === 'CUSTOM_INPUT')) {
       startMenuMusic(this.config.soundEnabled);
     }
 
@@ -107,6 +121,10 @@ class TypeBlitzApp {
       this.currentPassage.author
     );
     frameLines.push(...headerLines);
+    const now = performance.now();
+    const { cols, rows } = getTerminalDimensions();
+    const cells = this.state === 'PLAYING' ? this.effects.sample(this.engine, cols, now) : [];
+    const useKitty = this.graphics.enabled && rows >= headerLines.length + 12;
 
     switch (this.state) {
       case 'MENU':
@@ -124,7 +142,7 @@ class TypeBlitzApp {
         break;
 
       case 'PLAYING':
-        frameLines.push(...renderStreamView(this.engine));
+        frameLines.push(...renderStreamView(this.engine, { cells, kitty: useKitty, now }));
         break;
 
       case 'SUMMARY':
@@ -161,7 +179,20 @@ class TypeBlitzApp {
 
     frameLines.push(...renderFooter(helpStr));
 
-    process.stdout.write(renderTerminalFrame(frameLines));
+    let output = '';
+    if (animationOnly && this.previousFrame.length === frameLines.length) {
+      // Leave the banner and other unchanged text alone on animation ticks.
+      frameLines.forEach((line, index) => {
+        if (line !== this.previousFrame[index]) output += ANSI.moveTo(index + 1, 1) + line;
+      });
+    } else {
+      output = renderTerminalFrame(frameLines);
+    }
+    this.previousFrame = frameLines;
+    output += this.state === 'PLAYING' && useKitty
+      ? this.graphics.draw(cells, Math.floor(Math.max(0, cols - 2) / 2), headerLines.length + FLAME_ROW_OFFSET + 1, now)
+      : this.graphics.clear();
+    if (output) process.stdout.write(output);
   }
 
   private renderCustomInputView(): string[] {
@@ -186,6 +217,9 @@ class TypeBlitzApp {
   }
 
   private async startCountdownAndGame(): Promise<void> {
+    process.stdout.write(this.graphics.clear());
+    this.effects.reset();
+    this.previousFrame = [];
     this.state = 'COUNTDOWN';
     this.isCountingDown = true;
     this.engine = new GameEngine(this.currentPassage, this.config);
@@ -393,12 +427,15 @@ class TypeBlitzApp {
 
     if (key.name === 'backspace') {
       this.engine.handleBackspace();
+      this.effects.rewind(this.engine.typedInput.length);
       this.render();
       return;
     }
 
     if (str && str.length === 1 && !key.ctrl && !key.meta) {
+      const index = this.engine.typedInput.length;
       const { isError, completed } = this.engine.handleKey(str);
+      this.effects.record(index);
 
       if (isError) {
         playBeep(this.config.soundEnabled);

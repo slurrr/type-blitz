@@ -26,9 +26,10 @@
    - The first word streamed starts centered at your target line.
    - As you type, the passage streams horizontally leftwards at your exact typing speed!
    - **The active word & character always stay locked in the center!**
-4. **Orange Highlighter & Red Error Cascade**:
-   - Correctly typed characters light up in **vibrant neon orange highlighter**.
-   - If you hit a wrong key, the typo letter **turns RED**, and **all subsequent keystrokes turn red** until you press `Backspace` to clear past the mistake!
+4. **Fire & Ice Typing Effects**:
+   - Correct letters ignite, erode into embers, and disappear while the stream keeps its spacing.
+   - In Kitty, real pixel flames rise into three rows above the text at 30 FPS.
+   - Mistakes become cracked blue ice blocks. The whole error cascade stays frozen until you `Backspace` past the mistake.
 5. **Classic Literature Database**:
    - Passages from *Moby-Dick*, *1984*, *Pride and Prejudice*, *The Great Gatsby*, *Frankenstein*, *Alice's Adventures in Wonderland*, *The Metamorphosis*, *Dracula*, *Dune*, *Fahrenheit 451*, and more.
    - Custom passage input mode (paste your own text).
@@ -62,6 +63,40 @@ type-blitz --list
 type-blitz --passage 1984
 type-blitz --passage dune
 ```
+
+---
+
+## 🔥 Fire & Ice experiment (Kitty)
+
+Launch normally with `type-blitz` or `npm start`; graphics turn on automatically in a native
+Kitty TTY. For a silent sandbox that never writes scores:
+
+```bash
+npm run effects:demo
+```
+
+The demo automatically burns a phrase, freezes a mistake cascade, backspaces it, and
+retypes it. Start typing to take over; `Ctrl+R` replays the demo; `Esc` exits.
+
+- **Burn:** about 1.6 seconds, accelerated near the left edge so fast typing cannot outrun it.
+- **Ice:** translucent bevels, facets, cracks and a brief frost burst. It persists until erased.
+- **Layout:** flames stay behind the cursor; upcoming text remains native terminal text.
+  Burned characters keep their space, and backspacing restores untyped passage text.
+- **Implementation:** `@napi-rs/canvas` rasterizes glyph masks; the renderer erodes those
+  masks and draws procedural flames/ice. Compressed RGBA goes directly through the
+  [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/), with one
+  reusable image ID and no per-frame files or subprocesses. `kitten icat --print-window-size`
+  measures cell pixels on entry/resize. No Kitty config changes or remote control required.
+- **Tuning:** `BURN_MS`, `FLAME_ROWS` and `EFFECT_FPS` live in
+  `src/renderer/typingEffects.ts`; visuals live in `src/renderer/effectPixels.ts`.
+  `TYPE_BLITZ_EFFECT_FONT='Your Monospace Font'` changes the effect glyph font (default:
+  system monospace; it does not automatically read Kitty's font settings).
+- **Fallback:** `TYPE_BLITZ_EFFECTS=ansi npm start` uses text flames and blue ice cells.
+  Browser-audio PTYs and tmux default to this path; `TYPE_BLITZ_EFFECTS=kitty` explicitly
+  forces graphics where supported. Use at least 20 terminal rows for the full Kitty view.
+
+After changing source, run `npm run build` to update the `type-blitz` executable's build.
+Run `npm test` for engine, layout, effect lifecycle/pixels/protocol, score and audio tests.
 
 ---
 
