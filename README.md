@@ -137,7 +137,10 @@ A standalone writing preview—no game/menu changes yet. Freeze one Reddit discu
 then compare three independent voices using Pi's existing OpenAI/Codex login.
 Reddit defaults to **Luna 5.6 / xhigh**. Model calls have no coding-agent prompt or tools.
 Weather experiments have exactly five voices: negative/neutral/positive local forecasters
-and negative/positive human reactions, with separate task inputs. Weather generation requires an explicit model/effort selection.
+and negative/positive human reactions, with separate task inputs. Weather is accepted
+for now; its prompts remain unchanged. Weather generation requires explicit model/effort.
+Headlines separately discover two stories, read publisher context, and generate personal
+reactions using the selected **Sol 6.1 / low** defaults.
 
 ```bash
 npm run daily:preview -- collect       # Reuses saved input; no repeated scraping
@@ -151,6 +154,8 @@ npm run daily:preview -- weather collect  # Freeze Helena NWS forecast; no model
 npm run daily:preview -- weather generate forecast-negative --dry-run
 npm run daily:preview -- weather generate reaction-positive --dry-run
 npm run daily:preview -- weather generate all --dry-run  # Five roles, no model calls
+npm run daily:preview -- headlines collect  # Discovery + linked reporting; no model call
+npm run daily:preview -- headlines generate --parallel --dry-run  # Two planned requests
 ```
 
 Edit `prompts/daily/{student,blogger,satirist}.md` to change voices. Numbered, immutable

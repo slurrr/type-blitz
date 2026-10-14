@@ -48,7 +48,8 @@ export const WEATHER_VOICES = {
   'reaction-negative': 'Negative human weather reaction',
   'reaction-positive': 'Overly positive human weather reaction'
 } as const;
-export const ALL_VOICES = { ...VOICES, ...LEGACY_WEATHER_VOICES, ...WEATHER_VOICES };
+export const HEADLINE_VOICES = { 'headline-reaction': 'Personal headline reaction' } as const;
+export const ALL_VOICES = { ...VOICES, ...LEGACY_WEATHER_VOICES, ...WEATHER_VOICES, ...HEADLINE_VOICES };
 export type VoiceId = keyof typeof ALL_VOICES;
 
 export const THINKING_LEVELS = ['off', 'low', 'medium', 'high', 'xhigh'] as const;

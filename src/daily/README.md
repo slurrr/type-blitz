@@ -1,7 +1,7 @@
 # Daily passage voice experiment
 
 Standalone; nothing here is imported by the game. First prove the writing, then
-integrate it. Reddit voice experiments and Helena weather previews share immutable
+integrate it. Reddit voice, weather and headline previews share immutable
 history, but have separate inputs and prompt instructions. No scheduler or new game menu.
 
 The completed model-selection reading view is
@@ -94,6 +94,10 @@ Token counts describe subscription usage, not a dollar invoice; output counts ma
 include reasoning. Single runs are observations, not controlled performance benchmarks.
 
 ## Weather experiments
+
+**Accepted for now:** preserve the current prompts and their soup-mitten/descriptive
+human detail. Exclamation counts are not a tuning target. No further weather changes
+or generations unless explicitly requested.
 
 Exactly five active weather voices. No student, blogger, satirist, or old weather
 personality is included in new weather generation.
@@ -189,8 +193,77 @@ voices whose editable files have been removed. Retired voices are not current CL
 and the earlier rejected approach, not automatic quality scores. Ready means basic
 format checks passed; factuality and naturalness still need human review.
 
-A future headline collector can feed the same `GenerationSeed` boundary without
-pretending to be Reddit or loading weather prompts. It is not implemented yet.
+## Headline experiments
+
+A separate `headlines-context.json` freezes **two stories**, discovered from the same
+public Reddit popular/hot feed rather than handpicked publishers. The writer gets
+linked publisher reporting plus a separately labeled discussion sample. Neither
+a title alone nor comments treated as facts is sufficient.
+
+One independent `headline-reaction` passage per story. No weather personas, national
+anchor script, compulsory joke, positive/negative pair, or predetermined emotional
+stance. `prompts/headlines/` asks for an actual opinion grounded in the story and
+one emotionally relevant everyday detail. It forbids invented evidence, victim
+testimony, quotations or treating comments as consensus. Hypothetical situations
+must not become claims about real people. Source attribution should be natural
+where needed, not input-bookkeeping narration.
+
+**User-selected defaults for this iteration: Sol 6.1 / low.** These defaults apply
+only to the new headline command; old Reddit/weather behavior is unchanged.
+
+```sh
+# Browser collection only; reuse frozen input unless --refresh is explicit.
+npm run daily:preview -- headlines collect
+npm run daily:preview -- headlines show
+npm run daily:preview -- headlines show --json
+
+# Read exact planned prompts/input before spending calls.
+npm run daily:preview -- headlines generate --parallel --dry-run
+
+# TWO independent calls with the selected Sol 6.1 low defaults.
+npm run daily:preview -- headlines generate --parallel
+
+# One story only; editable prompts create a new immutable attempt.
+npm run daily:preview -- headlines generate 1
+npm run daily:preview -- headlines generate 2 --model gpt-6.1-sol --thinking low
+```
+
+Read/inspect the sources before generating. The normal generate command is
+sequential; `--parallel` is explicit. Numbered history, reviews, exact prompt/input
+inspection and archived replay work as before. Story-specific fingerprints prevent
+confusing outputs from different headlines. First reading view:
+`~/runs/type-blitz/daily-preview/headlines-comparison.md`.
+
+### Collection boundaries and limitations
+
+- One discovery navigation, first 25 posts, at most six candidate article navigations.
+  Post eligibility: within 72 hours, 20+ comments, descriptive headline, external HTTPS
+  article URL rather than obvious image/video/social-media links.
+- Read article/main paragraphs on the linked publisher in an owned browser tab.
+  Require a publication timestamp with timezone within 72 hours and at least 800
+  characters of reporting; cap at 14,000 characters. Retain actual final URL, title,
+  published/captured times, extraction container and truncation flag.
+- Exact URL / substantial title-word overlap skips likely duplicates. This is not
+  semantic event deduplication; inspect that the two stories really are distinct.
+- Two bounded top-sort discussion requests total, at most six substantive branches
+  and two replies per branch. Author fields excluded; inline handles may remain in text.
+- Failed/blocked/too-short/undated article candidates are recorded and skipped within
+  the six-candidate budget, never reloaded or bypassed. Rate limits and lost tab
+  ownership abort. Owned tabs close in finally; other tabs are never guessed or closed.
+- If two usable stories cannot be collected, fail without replacing the old packet.
+  No model fallback to titles alone, silent source refresh, or automatic model retries.
+- This is a workstation browser transport, not an anonymous/global news ranking or a
+  production server crawler. Public-hostname filtering is conservative but is **not**
+  a server-side DNS/SSRF sandbox. Do not expose arbitrary-URL collection as a service.
+- Readable article/main paragraphs do not prove complete reporting or independent
+  corroboration. Cookie banners, related text, missing context and partial paywalls
+  can defeat heuristics. Human source and factuality review remain necessary.
+- Single-publisher claims and top-comment sentiment are distinct evidence, not truth
+  by popularity. Publication recency does not guarantee an event itself is new.
+
+Collection writes only headline context. Generation never touches the browser,
+weather input or original Reddit context. Raw model drafts and uncertainty remain
+visible: do not silently rewrite a passage to hide a factual or stylistic miss.
 
 ## Immutable history and marks
 
@@ -259,6 +332,9 @@ legacy files are never written again by the new CLI. No credentials are archived
 - `variants.ts`: validates single-model or mixed-model comparison settings before calls.
 - `weather.ts`: typed weather source, NWS collector, reports, forecast selection and prompt seeds.
 - `weatherCli.ts`: weather collect/note/show/generate; model selection is explicit.
+- `headlines.ts`: typed reporting/discussion packets, validation, frozen input and story seeds.
+- `headlineBrowser.ts`: bounded feed/article/discussion collection and owned-tab cleanup.
+- `headlinesCli.ts`: headline collect/show/generate; user-selected Sol 6.1 low defaults.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
   A request contains shared + only its voice. No other voice's instructions/results.
@@ -302,7 +378,10 @@ ID reservation/failure isolation, and interruption/failure retention. Weather te
 cover public-request boundaries, source attribution, local-date selection, missing
 forecast rejection, five isolated roles, role-specific input projection, rejected mode/voice
 combinations, dry-run matrix validation, and immutable legacy/current weather replay.
-Fixtures/fake transports only: tests never call Reddit, NWS or an LLM.
+Headline tests cover candidate filtering/duplicates, publication evidence, public-URL
+checks, reporting/discussion separation, caps, ownership/rate-limit aborts, frozen reuse,
+role isolation, dry-run defaults and immutable replay. Fixtures/fake transports only:
+tests never call Reddit, publishers, NWS or an LLM.
 
 The eventual first menu entry is exactly `QUICK PLAY (DAILY GEN AI)`: Helena today +
 extended weather, two news stories and two buzz topics, with varied voices. Weather

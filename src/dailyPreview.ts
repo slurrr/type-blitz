@@ -8,6 +8,7 @@ import { formatAttempt, formatPromptTable, formatTable, generateParallel, genera
 import { RATINGS, THINKING_LEVELS, VOICES, type Rating, type VoiceId } from './daily/types.js';
 import { comparisonVariants } from './daily/variants.js';
 import { registerWeather } from './daily/weatherCli.js';
+import { registerHeadlines } from './daily/headlinesCli.js';
 
 const program = new Command()
   .name('daily-preview')
@@ -159,6 +160,7 @@ program.command('generate')
   });
 
 registerWeather(program);
+registerHeadlines(program);
 
 program.parseAsync().catch(error => {
   console.error(error instanceof Error ? error.message : String(error));
