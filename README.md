@@ -106,7 +106,8 @@ retypes it. Start typing to take over; `Ctrl+R` replays the demo; `Esc` exits.
   forces graphics where supported. Use at least 20 terminal rows for the full Kitty view.
 
 After changing source, run `npm run build` to update the `type-blitz` executable's build.
-Run `npm test` for engine, layout, effect lifecycle/pixels/protocol, score and audio tests.
+Run `npm test` for engine, navigation, layout, effect lifecycle/pixels/protocol, score,
+audio and standalone daily-preview tests.
 
 ---
 
@@ -129,6 +130,23 @@ Enter/Space, Escape, Page Up/Down and other shortcuts still work. `h` does nothi
 the main menu; `l` does nothing on high scores, where there is no forward destination.
 
 ---
+
+## Daily passage voice experiment
+
+A standalone writing preview—no game/menu changes yet. Freeze one Reddit discussion,
+then compare three independent voices using Pi's existing OpenAI/Codex login.
+Defaults to **Luna 5.6 / xhigh**. Model calls have no coding-agent prompt or tools.
+
+```bash
+npm run daily:preview -- collect       # Reuses saved input; no repeated scraping
+npm run daily:preview -- show          # Review the input and latest samples
+npm run daily:preview -- generate      # First three-voice batch
+npm run daily:preview -- generate student --replace  # Rerun just this voice
+```
+
+Edit `prompts/daily/{student,blogger,satirist}.md` to change voices. Artifacts live in
+`~/runs/type-blitz/daily-preview/`, not the repo. See [the prototype guide](src/daily/README.md)
+for model/thinking options, extraction limits, isolation, and the future daily mode.
 
 ## Browser terminal integration
 
