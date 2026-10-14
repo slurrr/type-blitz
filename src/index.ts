@@ -1,6 +1,7 @@
 import readline from 'node:readline';
 import { Command } from 'commander';
 import { Passage, GameState, GameConfig } from './types.js';
+import { navigationKey } from './navigation.js';
 import { LITERARY_PASSAGES, getRandomPassage, getPassageById } from './passages/passages.js';
 import { GameEngine } from './engine/gameEngine.js';
 import { ANSI, Palette, getTerminalDimensions, renderTerminalFrame } from './renderer/ansi.js';
@@ -168,9 +169,9 @@ class TypeBlitzApp {
     if (this.state === 'PLAYING') {
       helpStr = 'TYPE THE TEXT AS IT STREAMS | [ESC] PAUSE / MENU | [CTRL+R] RESTART';
     } else if (this.state === 'MENU') {
-      helpStr = '[UP/DOWN] NAVIGATE | [ENTER/SPACE] SELECT | [Q] QUIT';
+      helpStr = '[J/K, ↑/↓] MOVE | [L/ENTER/SPACE] SELECT | [Q] QUIT';
     } else if (this.state === 'PASSAGE_SELECT') {
-      helpStr = '[UP/DOWN] NAVIGATE | [ENTER] CHOOSE PASSAGE | [ESC] BACK';
+      helpStr = '[J/K, ↑/↓] MOVE | [L/ENTER] START | [H/ESC] BACK';
     } else if (this.state === 'INITIALS_ENTRY') {
       helpStr = 'ENTER INITIALS | [UP/DOWN] CHANGE | [LEFT/RIGHT] SLOT | [ENTER] SAVE';
     } else if (this.state === 'CUSTOM_INPUT') {
@@ -248,6 +249,7 @@ class TypeBlitzApp {
     }
 
     if (this.isCountingDown) return;
+    key = navigationKey(this.state, key);
 
     switch (this.state) {
       case 'MENU':
@@ -285,10 +287,10 @@ class TypeBlitzApp {
     const maxVisible = Math.max(5, getTerminalDimensions().rows - 14);
     const maxOffset = Math.max(0, scores.length - maxVisible);
 
-    if (key.name === 'up' || key.name === 'k') {
+    if (key.name === 'up') {
       this.highScoreScrollOffset = Math.max(0, this.highScoreScrollOffset - 1);
       this.render();
-    } else if (key.name === 'down' || key.name === 'j') {
+    } else if (key.name === 'down') {
       this.highScoreScrollOffset = Math.min(maxOffset, this.highScoreScrollOffset + 1);
       this.render();
     } else if (key.name === 'pageup') {

@@ -2,7 +2,7 @@ import assert from 'node:assert';
 import { GameEngine } from '../engine/gameEngine.js';
 import { renderStreamView } from '../renderer/streamView.js';
 import { renderHeader, renderFooter } from '../renderer/retroHeader.js';
-import { renderMenuView, renderPassageSelectView, renderHighScoresView, renderInitialsEntryView } from '../renderer/statsDisplay.js';
+import { renderMenuView, renderPassageSelectView, renderHighScoresView, renderInitialsEntryView, renderSummaryView } from '../renderer/statsDisplay.js';
 import { renderCountdownFrame } from '../renderer/countdown.js';
 import { stripAnsi, visibleWidth } from '../renderer/displayWidth.js';
 import { ANSI, renderTerminalFrame } from '../renderer/ansi.js';
@@ -37,11 +37,14 @@ function runRendererTests() {
     Object.defineProperty(process.stdout, 'columns', { value: columns, configurable: true });
     const screens = [
       renderHeader('A Tale of Two Cities', 'Charles Dickens'),
-      renderFooter('[UP/DOWN] NAVIGATE | [ENTER/SPACE] SELECT | [Q] QUIT'),
+      renderFooter('[J/K, ↑/↓] MOVE | [L/ENTER/SPACE] SELECT | [Q] QUIT'),
+      renderFooter('[J/K, ↑/↓] MOVE | [L/ENTER] START | [H/ESC] BACK'),
       renderMenuView(0, true),
       renderPassageSelectView(0),
       renderHighScoresView([], 0, 10),
       renderInitialsEntryView(['A', 'A', 'A'], 0, 100),
+      renderSummaryView(engine, true),
+      renderSummaryView(engine, false),
       renderCountdownFrame('GET READY!')
     ];
     for (const screen of screens) {
@@ -57,6 +60,15 @@ function runRendererTests() {
   const menuText = stripAnsi(renderMenuView(0, true).join('\n'));
   assert.ok(menuText.includes('NEON REFLEXES READY'));
   assert.ok(!menuText.includes('Use [UP/DOWN]'), 'menu body must not duplicate footer navigation');
+
+  const scoresHelp = stripAnsi(renderHighScoresView([], 0, 10).join('\n'));
+  assert.ok(scoresHelp.includes('[J/K,↑/↓]'));
+  assert.ok(scoresHelp.includes('[H/ESC]'));
+  for (const highScore of [false, true]) {
+    const summary = stripAnsi(renderSummaryView(engine, highScore).join('\n'));
+    assert.ok(summary.includes('[L/ENTER]'));
+    assert.ok(summary.includes('[H/M]'));
+  }
 
   console.log('✅ Stream View and Border Tests PASSED!\n');
 }

@@ -108,8 +108,8 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
   const promptText = isNewHighScore
-    ? `${Palette.yellow('[ENTER/SPACE] Save High Score Initials')}  |  ${Palette.magenta('[M] Menu')}  |  ${Palette.errorRedFg('[Q] Quit')}`
-    : `${Palette.yellow('[SPACE/ENTER] Next Passage')}  |  ${Palette.cyan('[R] Retry')}  |  ${Palette.magenta('[M] Menu')}  |  ${Palette.errorRedFg('[Q] Quit')}`;
+    ? `${Palette.yellow('[L/ENTER] Save Initials')}  |  ${Palette.magenta('[H/M] Menu')}  |  ${Palette.errorRedFg('[Q] Quit')}`
+    : `${Palette.yellow('[L/ENTER] Next Passage')}  |  ${Palette.cyan('[R] Retry')}  |  ${Palette.magenta('[H/M] Menu')}  |  ${Palette.errorRedFg('[Q] Quit')}`;
   const promptPlain = promptText.replace(/\x1b\[[0-9;]*m/g, '').length;
   const promptMargin = Math.max(0, Math.floor((innerWidth - promptPlain) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(promptMargin) + promptText + ' '.repeat(Math.max(0, innerWidth - promptPlain - promptMargin)) + Palette.neonBorder('║'));
@@ -226,7 +226,7 @@ export function renderHighScoresView(
   const total = scores.length;
   const endIdx = Math.min(scrollOffset + maxVisibleRows, total);
   const rangeStr = total > 0 ? `[ #${scrollOffset + 1}-${endIdx} OF ${total} ] ` : '';
-  const helpText = `${rangeStr}Use [UP/DOWN/PGUP/PGDN] Scroll | [ESC/M] Menu`;
+  const helpText = `${rangeStr}[J/K,↑/↓] Scroll | [PGUP/DN] Page | [H/ESC] Back`;
   const margin = Math.max(0, Math.floor((innerWidth - helpText.length) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(margin) + Palette.green(helpText) + ' '.repeat(Math.max(0, innerWidth - helpText.length - margin)) + Palette.neonBorder('║'));
 

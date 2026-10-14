@@ -116,11 +116,17 @@ Run `npm test` for engine, layout, effect lifecycle/pixels/protocol, score and a
 | --- | --- |
 | **Typing Keys** | Type characters matching the passage stream |
 | **Backspace** | Erase frozen mistakes only; stops at the last correct letter |
-| **UP / DOWN** | Navigate menu options & passage list |
-| **ENTER / SPACE** | Select menu option or start quick play |
+| **J / K** or **DOWN / UP** | Move down/up in menus, passage list and high scores |
+| **L** or **ENTER / SPACE** | Select/open a menu item, start a passage, or continue from results |
+| **H** | Back to the menu from passage selection, high scores or results |
 | **ESC** | Pause / Return to Main Menu |
 | **CTRL + R** | Restart current passage test |
 | **Q / CTRL + C** | Exit game |
+
+`hjkl` navigation applies only on navigation screens. During gameplay, custom passage
+input and initials entry, all four letters remain ordinary text. Existing arrow keys,
+Enter/Space, Escape, Page Up/Down and other shortcuts still work. `h` does nothing at
+the main menu; `l` does nothing on high scores, where there is no forward destination.
 
 ---
 

@@ -31,7 +31,7 @@
     "start": "tsx src/index.ts",
     "game": "node dist/index.js",
     "effects:demo": "tsx src/effectsDemo.ts",
-    "test": "tsx src/__tests__/engine.test.ts && tsx src/__tests__/renderer.test.ts && tsx src/__tests__/effects.test.ts && tsx src/__tests__/scores.test.ts && tsx src/__tests__/audio.test.ts"
+    "test": "tsx src/__tests__/engine.test.ts && tsx src/__tests__/navigation.test.ts && tsx src/__tests__/renderer.test.ts && tsx src/__tests__/effects.test.ts && tsx src/__tests__/scores.test.ts && tsx src/__tests__/audio.test.ts"
   },
   "keywords": [
     "tui",
