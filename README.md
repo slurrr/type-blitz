@@ -136,8 +136,8 @@ the main menu; `l` does nothing on high scores, where there is no forward destin
 A standalone writing preview—no game/menu changes yet. Freeze one Reddit discussion,
 then compare three independent voices using Pi's existing OpenAI/Codex login.
 Reddit defaults to **Luna 5.6 / xhigh**. Model calls have no coding-agent prompt or tools.
-Weather experiments support a generic local anchor, relatable commentary, and the
-existing voices. Weather generation requires an explicit model/effort selection.
+Weather experiments have exactly four voices: negative/positive local forecasters
+and negative/positive human reactions, with separate task inputs. Weather generation requires an explicit model/effort selection.
 
 ```bash
 npm run daily:preview -- collect       # Reuses saved input; no repeated scraping
@@ -148,8 +148,9 @@ npm run daily:preview -- mark 001 good # Quality: good / mid / bad
 npm run daily:preview -- list --by-prompt # Quality counts by prompt/model/thinking
 npm run daily:preview -- generate --from 001 --thinking off  # Exact-input comparison
 npm run daily:preview -- weather collect  # Freeze Helena NWS forecast; no model call
-npm run daily:preview -- weather generate weatherman --mode today --dry-run
-npm run daily:preview -- weather generate weather-friend --mode feel --dry-run
+npm run daily:preview -- weather generate forecast-negative --dry-run
+npm run daily:preview -- weather generate reaction-positive --dry-run
+npm run daily:preview -- weather generate all --dry-run  # Four roles, no model calls
 ```
 
 Edit `prompts/daily/{student,blogger,satirist}.md` to change voices. Numbered, immutable

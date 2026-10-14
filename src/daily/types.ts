@@ -35,14 +35,19 @@ export const VOICES = {
   blogger: 'Earnest mommy blogger',
   satirist: 'Dry satirical observer'
 } as const;
-// Keep Reddit's existing three-voice default unchanged.
-export const WEATHER_VOICES = {
-  ...VOICES,
+// Historical IDs stay readable/replayable, but are not active weather choices.
+const LEGACY_WEATHER_VOICES = {
   weatherman: 'Local weather anchor',
   'weather-friend': 'Relatable weather observer',
   'weather-dark': 'Dark local weather presenter'
 } as const;
-export const ALL_VOICES = WEATHER_VOICES;
+export const WEATHER_VOICES = {
+  'forecast-negative': 'Nasty local weatherman',
+  'forecast-positive': 'Overly positive local weatherman',
+  'reaction-negative': 'Negative human weather reaction',
+  'reaction-positive': 'Overly positive human weather reaction'
+} as const;
+export const ALL_VOICES = { ...VOICES, ...LEGACY_WEATHER_VOICES, ...WEATHER_VOICES };
 export type VoiceId = keyof typeof ALL_VOICES;
 
 export const THINKING_LEVELS = ['off', 'low', 'medium', 'high', 'xhigh'] as const;

@@ -95,85 +95,92 @@ include reasoning. Single runs are observations, not controlled performance benc
 
 ## Weather experiments
 
-Weather generation **requires explicit `--model` and `--thinking`**, or repeatable
-`--variant model:thinking` for a multi-model matrix. The two forms cannot be mixed;
-duplicate variants are rejected. `--dry-run` requires neither and never loads credentials
-or creates attempts. With variants supplied it also prints the planned call count.
-The old Reddit generation defaults are unchanged.
+Exactly four active weather voices. No student, blogger, satirist, or old weather
+personality is included in new weather generation.
+
+| Voice | Job |
+|---|---|
+| `forecast-negative` | Nasty, foul-mouthed **local** weatherman delivering an actual forecast |
+| `forecast-positive` | Excessively enthusiastic **local** weatherman delivering an actual forecast |
+| `reaction-negative` | A person complaining about dealing with the weather |
+| `reaction-positive` | A person delighting in their response to the weather |
+
+The two jobs have different prompts **and different input projections**:
+- Presenters receive official forecast periods, location and as-of time. They mention
+  Helena/Montana naturally, without any required opening or city/state announcement.
+  No user-report scaffolding is included. Forecast values remain predictions.
+- Reactions receive only a weather situation: same-local-day user-described conditions,
+  or the first applicable period's short description when no current report exists.
+  No location, forecast numbers, provider labels or timestamps are injected into this
+  input. They should not name a place, recite a forecast, or mention reports/sources.
+  First-person feelings and profanity are allowed; this is not weather advice.
+
+Both polarities receive identical input within their job. Across models, the exact
+request for each voice is identical. The full frozen packet remains separate evidence;
+the archived request records exactly the projection that was sent. Earlier records
+retain their old prompts/input and remain readable/replayable, not silently upgraded.
+
+Generation requires explicit `--model` and `--thinking`, or repeatable
+`--variant model:thinking`. No default model is silently chosen. Duplicate variants
+and mixed option forms are rejected. `--dry-run` prints prompts and the planned
+call count without credentials, model calls or numbered attempts.
 
 ```sh
-# Public NWS: one points lookup + one forecast fetch for Helena, Montana.
-# Reuses the frozen forecast thereafter; --refresh is explicit. No model calls.
-npm run daily:preview -- weather collect
+npm run daily:preview -- weather collect       # Two public NWS requests; reuse thereafter
 npm run daily:preview -- weather show
-
-# Optional user-described conditions, separately attributed and dated.
-# Works without a forecast; enables feel mode, NOT factual forecast modes.
 npm run daily:preview -- weather note "It snowed, now it is melting, and it still feels cold."
 
-# Inspect exact prompts/input before spending a call.
-npm run daily:preview -- weather generate weatherman --mode today --dry-run
-npm run daily:preview -- weather generate weatherman --mode extended --dry-run
-npm run daily:preview -- weather generate weather-friend --mode feel --dry-run
-npm run daily:preview -- weather generate all --mode feel --dry-run
+# auto (default): today's forecast for presenters, human reaction for the other two.
+npm run daily:preview -- weather generate all --dry-run
+npm run daily:preview -- weather generate forecast-negative --dry-run
+npm run daily:preview -- weather generate reaction-positive --dry-run
 
-# After choosing MODEL and EFFORT, replace dry-run with explicit settings.
-npm run daily:preview -- weather generate weatherman --mode today --model "$MODEL" --thinking "$EFFORT"
-npm run daily:preview -- weather generate weather-friend --mode feel --model "$MODEL" --thinking "$EFFORT"
-# all = SIX voices, one call per model/voice; sequential unless --parallel is supplied.
-npm run daily:preview -- weather generate all --mode feel --model "$MODEL" --thinking "$EFFORT" --parallel
+# Extended forecast is only a presenter task.
+npm run daily:preview -- weather generate forecast-positive --mode extended --dry-run
 
-# Explicit 18-call matrix: six voices x three settings, same frozen input.
+# One call, after choosing MODEL and EFFORT.
+npm run daily:preview -- weather generate reaction-negative --model "$MODEL" --thinking "$EFFORT"
+
+# Four voices x three variants = TWELVE new calls, not a read-only report.
 # Add --dry-run to inspect without generating.
-npm run daily:preview -- weather generate all --mode feel --parallel \
+npm run daily:preview -- weather generate all --parallel \
   --variant gpt-6.1-sol:low --variant gpt-6-astra:low --variant gpt-5.6-luna:off
 ```
 
-Modes and voices are independent:
-- **today**: remaining forecast periods for the location's day, including an ongoing
-  overnight period. Date boundaries use America/Denver, not the machine's timezone.
-- **extended**: next six available periods starting after that local day (normally
-  three days), not a repetition of today's forecast.
-- **feel**: relatable commentary grounded in forecast and/or user-reported conditions.
-  Cold, melting snow and small everyday frustrations can supply recognition or a
-  chuckle; no compulsory joke or invented prediction.
-- **weatherman**: deliberately generic, clear, friendly local weather anchor.
-- **weather-friend**: warm, wry local observer.
-- **weather-dark**: its pessimistic mirror; notices the catch in sunshine and lets
-  miserable weather stay miserable. Restrained, dry negativity, not theatrical doom.
-- Existing **student / blogger / satirist** voice files can also be tried unchanged.
-  They get weather grounding instructions, not Reddit's post/comment guidance.
+`--mode auto` routes each voice to its own job. Explicit `today` / `extended` are
+only valid for presenters; `feel` only for reactions. Incompatible combinations fail
+before model setup. `all --mode feel` is intentionally invalid; it would turn the
+weathermen into commentators again. Default single voice: `forecast-positive`.
+Runs are sequential unless `--parallel` is explicit.
 
-All prompts live under `prompts/weather/`; existing Reddit prompts remain untouched.
-Task/voice/format are composed separately. Location comes first, and the target
-remains one 45–60-word paragraph. These are prompt instructions, not an automated
-factuality guarantee: inspect the output against the input before approving it.
+Today selects remaining periods of the location's day, including an ongoing overnight
+period; extended selects the next six periods starting after that day (normally three
+days). Date boundaries use America/Denver, not the machine timezone. Forecast tasks
+require applicable forecast periods. Reactions can run from a current user report alone.
+The target remains one 45–60-word paragraph, not a mandatory sentence template.
 
-`weather-context.json` is separate from Reddit's `context.json`. It records location,
-timezone, forecast provider/URL/issued time, temperatures and units, precipitation
-chances (unknown stays unknown, not zero), wind and period boundaries. User reports
-are explicitly anecdotal, not weather-station observations. Adding a report creates
-a new context snapshot but does not change the forecast's issue time. Forecast
-refresh retains dated reports; stale reports must not be described as current.
-No station observations, weather alerts, historical snowfall or road reports are
-collected. A forecast is a prediction, not measured current conditions.
+`weather-context.json` is independent of Reddit's `context.json`. It retains NWS
+provider/URL/issued time, units, wind, precipitation probabilities (unknown is not zero),
+period boundaries and separately dated user anecdotes. Adding a note does not change
+the forecast issue time. Refresh retains reports; stale-day reports are not selected
+as the current reaction scene. Reports are not station observations. No alerts,
+historical snowfall or road reports are collected.
 
-Collection is bounded to two public requests, no credentials, redirects or retries.
-Failure preserves the prior packet. Generation never fetches or silently refreshes;
-the model writes for the frozen as-of time. Today/extended require applicable forecast
-periods; a report-only packet can run feel mode. Refresh explicitly when real freshness
-is needed, rather than comparing different sources accidentally.
+Collection uses two bounded public requests, no credentials, redirects or retries.
+Failure preserves prior input. Generation never collects or silently refreshes.
+The model writes for the frozen as-of time, not necessarily today's real weather.
+Refresh only deliberately with `weather collect --refresh`.
 
-Weather results join the same numbered history, ratings and `list/show/review`.
-Use `show ID --input` or `--prompt` for evidence. Existing `generate --from ID`
-and `compare ID --model ... --thinking ...` replay weather requests exactly, even
-after current weather or prompt files change. Genre/source metadata distinguish
-weather from legacy Reddit records without rewriting old files.
+Results join the same immutable numbering, timings, good/mid/bad ratings and
+`list/show/review`. Use `show ID --input` or `--prompt` for exact evidence.
+`generate --from ID` and `compare ID ...` replay archived requests, including retired
+voices whose editable files have been removed. Retired voices are not current CLI choices.
+`weather-comparison.md` in the runtime directory contains the current comparison
+and the earlier rejected approach, not automatic quality scores. Ready means basic
+format checks passed; factuality and naturalness still need human review.
 
-Future headline collection can feed the same `GenerationSeed` boundary (kind, title,
-year, source fingerprint, voice and exact request); it need not pretend to be Reddit
-or use weather prompts. **A dedicated headline collector/command is not implemented
-yet**; this iteration starts with weather only.
+A future headline collector can feed the same `GenerationSeed` boundary without
+pretending to be Reddit or loading weather prompts. It is not implemented yet.
 
 ## Immutable history and marks
 
@@ -283,12 +290,14 @@ reuse, prompt isolation, exact reasoning selection (including off), sequential c
 immutable publication, migration, review filters, exact replay, same-voice concurrent
 ID reservation/failure isolation, and interruption/failure retention. Weather tests
 cover public-request boundaries, source attribution, local-date selection, missing
-forecast rejection, six isolated voices, dry-run CLI matrix validation, and immutable weather replay.
+forecast rejection, four isolated roles, role-specific input projection, rejected mode/voice
+combinations, dry-run matrix validation, and immutable legacy/current weather replay.
 Fixtures/fake transports only: tests never call Reddit, NWS or an LLM.
 
 The eventual first menu entry is exactly `QUICK PLAY (DAILY GEN AI)`: Helena today +
 extended weather, two news stories and two buzz topics, with varied voices. Weather
-starts with the location and accurately delivers the forecast. One collection refresh
+presenters include the location naturally and accurately deliver the forecast;
+human-reaction passages omit the location. One collection refresh
 on launch-days, not necessarily one model call; no unattended daily scheduler.
 Keep classic gameplay responsive and generate in parallel for the game. None of
 that integration is implemented yet.

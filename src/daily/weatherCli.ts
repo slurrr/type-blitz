@@ -35,8 +35,8 @@ export function registerWeather(program: Command): void {
     });
   weather.command('generate')
     .description('Generate one weather passage per voice/model variant; defaults to sequential, never fetches weather')
-    .argument('[voice]', 'weatherman, weather-friend, weather-dark, student, blogger, satirist, or all (six voices)', 'weatherman')
-    .addOption(new Option('--mode <mode>', 'forecast today, upcoming periods, or relatable commentary').choices([...WEATHER_MODES]).default('today'))
+    .argument('[voice]', 'forecast-negative, forecast-positive, reaction-negative, reaction-positive, or all (four voices)', 'forecast-positive')
+    .addOption(new Option('--mode <mode>', 'auto selects today for presenters and feel for reactions').choices(['auto', ...WEATHER_MODES]).default('auto'))
     .option('--model <id>', 'single physical openai-codex model; pair with --thinking')
     .addOption(new Option('--thinking <level>', 'explicit effort for --model; use --variant for a matrix').choices([...THINKING_LEVELS]))
     .option('--variant <model:thinking>', 'repeat for multiple models; replaces --model/--thinking',
@@ -60,7 +60,7 @@ export function registerWeather(program: Command): void {
         const voices = voice === 'all' ? Object.keys(WEATHER_VOICES) as VoiceId[] : [voice as VoiceId];
         const seeds = await Promise.all(voices.map(id => seedFromWeather(packet, id, options.mode)));
         if (options.dryRun) {
-          for (const seed of seeds) console.log(`\n${seed.voice} / ${options.mode}\n\nSYSTEM\n${seed.request.systemPrompt}\n\nUSER\n${seed.request.userPrompt}`);
+          for (const seed of seeds) console.log(`\n${seed.voice} / ${seed.source.title}\n\nSYSTEM\n${seed.request.systemPrompt}\n\nUSER\n${seed.request.userPrompt}`);
           if (variants.length) console.log(`Planned matrix: ${seeds.length} voices x ${variants.length} variants = ${seeds.length * variants.length} calls (${options.parallel ? 'parallel' : 'sequential'}).\n${variants.map(v => v.model + ':' + v.thinking).join(' / ')}`);
           console.log(`\nDry run: ${seeds.length} prompt(s); zero model calls and zero attempts.`);
           return;
