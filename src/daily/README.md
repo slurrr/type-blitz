@@ -101,7 +101,7 @@ personality is included in new weather generation.
 | Voice | Job |
 |---|---|
 | `forecast-negative` | Nasty, foul-mouthed **local** weatherman delivering an actual forecast |
-| `forecast-positive` | Excessively enthusiastic **local** weatherman delivering an actual forecast |
+| `forecast-positive` | Calm, confident, reassuring **local** weatherman delivering an actual forecast |
 | `reaction-negative` | A person complaining about dealing with the weather |
 | `reaction-positive` | A person delighting in their response to the weather |
 
@@ -109,11 +109,14 @@ The two jobs have different prompts **and different input projections**:
 - Presenters receive official forecast periods, location and as-of time. They mention
   Helena/Montana naturally, without any required opening or city/state announcement.
   No user-report scaffolding is included. Forecast values remain predictions.
+  Positive forecasts reassure through clear expectations, not hype or denial of risk.
 - Reactions receive only a weather situation: same-local-day user-described conditions,
   or the first applicable period's short description when no current report exists.
   No location, forecast numbers, provider labels or timestamps are injected into this
   input. They should not name a place, recite a forecast, or mention reports/sources.
   First-person feelings and profanity are allowed; this is not weather advice.
+  One concrete personal intention/choice and why it matters should carry the emotion,
+  without prescribing activities for particular conditions. No invented backstory.
 
 Both polarities receive identical input within their job. Across models, the exact
 request for each voice is identical. The full frozen packet remains separate evidence;
@@ -141,7 +144,10 @@ npm run daily:preview -- weather generate forecast-positive --mode extended --dr
 # One call, after choosing MODEL and EFFORT.
 npm run daily:preview -- weather generate reaction-negative --model "$MODEL" --thinking "$EFFORT"
 
-# Four voices x three variants = TWELVE new calls, not a read-only report.
+# Current prompt-iteration model: Astra 6 low only, FOUR new calls.
+npm run daily:preview -- weather generate all --parallel --model gpt-6-astra --thinking low
+
+# Optional multi-model comparison: TWELVE new calls, not a read-only report.
 # Add --dry-run to inspect without generating.
 npm run daily:preview -- weather generate all --parallel \
   --variant gpt-6.1-sol:low --variant gpt-6-astra:low --variant gpt-5.6-luna:off

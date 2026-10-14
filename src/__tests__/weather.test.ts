@@ -100,7 +100,11 @@ try {
     assert.ok(!/nihilistic college student|mommy blogger|Start with the supplied location/.test(prompt.systemPrompt));
   }
   assert.ok(prompts[0].systemPrompt.includes('nasty, foul-mouthed'));
-  assert.ok(prompts[1].systemPrompt.includes('absurdly enthusiastic'));
+  assert.ok(prompts[1].systemPrompt.includes('warm, steady local weatherman'));
+  assert.ok(prompts[1].systemPrompt.includes('do not minimize danger'));
+  assert.ok(!prompts[0].systemPrompt.includes('one concrete, ordinary intention'));
+  assert.ok(prompts[2].systemPrompt.includes('one concrete, ordinary intention'));
+  assert.ok(prompts[3].systemPrompt.includes('one concrete, ordinary intention'));
   assert.ok(prompts[2].systemPrompt.includes('You fucking hate'));
   assert.ok(prompts[3].systemPrompt.includes('ridiculously pleased'));
   assert.ok(prompts[0].systemPrompt.includes('There is no required opening'));
@@ -115,6 +119,14 @@ try {
   assert.deepEqual(JSON.parse(fallback.userPrompt.split('\n\n')[1]), { situation: ['Mostly Cloudy'] });
   const stale = { ...frozen, reports: [{ ...frozen.reports[0], reportedAt: '2026-03-20T01:00:00Z' }] };
   assert.equal((await buildWeatherRequest(stale, 'reaction-negative')).userPrompt, fallback.userPrompt);
+  for (const scene of ['It is hot and humid.', 'It is raining.', 'It is mild and sunny.']) {
+    const otherWeather = { ...frozen, reports: [{ ...frozen.reports[0], text: scene }] };
+    for (const [voice, original] of [['reaction-negative', prompts[2]], ['reaction-positive', prompts[3]]] as const) {
+      const request = await buildWeatherRequest(otherWeather, voice);
+      assert.equal(request.systemPrompt, original.systemPrompt, 'personal-intention guidance is independent of weather conditions');
+      assert.deepEqual(JSON.parse(request.userPrompt.split('\n\n')[1]), { situation: [scene] });
+    }
+  }
   await assert.rejects(() => buildWeatherRequest(frozen, 'student'), /four active/);
   await assert.rejects(() => buildWeatherRequest(frozen, 'weather-dark'), /replay-only/);
   await assert.rejects(() => buildWeatherRequest(frozen, 'forecast-negative', 'feel'), /require/);
