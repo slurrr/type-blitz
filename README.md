@@ -139,13 +139,17 @@ Defaults to **Luna 5.6 / xhigh**. Model calls have no coding-agent prompt or too
 
 ```bash
 npm run daily:preview -- collect       # Reuses saved input; no repeated scraping
-npm run daily:preview -- show          # Review the input and latest samples
-npm run daily:preview -- generate      # First three-voice batch
-npm run daily:preview -- generate student --replace  # Rerun just this voice
+npm run daily:preview -- generate      # Three sequential calls, new immutable IDs
+npm run daily:preview -- list          # All attempts, including bad/failed results
+npm run daily:preview -- show 001 --prompt  # Exact historical passage and prompt
+npm run daily:preview -- mark 001 good # Quality: good / mid / bad
+npm run daily:preview -- list --by-prompt # Quality counts by prompt/model/thinking
+npm run daily:preview -- generate --from 001 --thinking off  # Exact-input comparison
 ```
 
-Edit `prompts/daily/{student,blogger,satirist}.md` to change voices. Artifacts live in
-`~/runs/type-blitz/daily-preview/`, not the repo. See [the prototype guide](src/daily/README.md)
+Edit `prompts/daily/{student,blogger,satirist}.md` to change voices. Numbered, immutable
+attempts and separate quality ratings live in `~/runs/type-blitz/daily-preview/`, not
+Git. No replacement/deletion of earlier attempts. See [the prototype guide](src/daily/README.md)
 for model/thinking options, extraction limits, isolation, and the future daily mode.
 
 ## Browser terminal integration

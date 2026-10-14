@@ -5,7 +5,8 @@ import { join } from 'node:path';
 import { collectReddit, readFeedDocument, type BrowserCommand } from '../daily/browser.js';
 import { cleanText, extractComments, FEED_URL, makePacket, selectPost } from '../daily/reddit.js';
 import { makePiWriter, verifyPayload, type PiContext, type PiRuntime } from '../daily/pi.js';
-import { buildRequest, collectOnce, generateSample, preparePassage, readPacket, readSample, sourceId, withPreviewLock } from '../daily/preview.js';
+import { buildRequest, collectOnce, preparePassage, readPacket, sourceId, withPreviewLock } from '../daily/preview.js';
+import { attemptName, generateAttempt, generateSequential, getAttempt, seedFromAttempt, seedFromPacket } from '../daily/history.js';
 import { VOICES, type VoiceId, type WriterRequest } from '../daily/types.js';
 
 const now = Date.now();
@@ -115,6 +116,8 @@ try {
 
   const contexts: PiContext[] = [];
   let requests = 0;
+  let active = 0;
+  let maxActive = 0;
   const prose = 'There is something wonderfully stubborn about fixing a toaster in a world that would rather sell you another one. Nobody here is disrupting anything except a loose wire. For once, progress means sitting beside a neighbor, borrowing a screwdriver, and refusing to throw the whole damn thing away.';
   const payload = (request: WriterRequest) => ({
     instructions: request.systemPrompt, store: false, tool_choice: 'none', reasoning: { effort: 'xhigh' },
@@ -124,6 +127,10 @@ try {
     getPhysicalModel: (provider, id) => ({ provider, id }),
     async completeSimple(model, context, options) {
       requests++;
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await new Promise(resolve => setTimeout(resolve, 1));
+      active--;
       contexts.push(context);
       assert.equal(context.messages.length, 1);
       assert.equal(context.messages[0].role, 'user');
@@ -138,8 +145,10 @@ try {
     }
   };
   const writer = makePiWriter(runtime, 'test-model');
-  const samples = await Promise.all((Object.keys(VOICES) as VoiceId[]).map(voice => generateSample(dir, packet, voice, writer)));
+  const seeds = await Promise.all((Object.keys(VOICES) as VoiceId[]).map(voice => seedFromPacket(packet, voice)));
+  const { attempts: samples } = await generateSequential(dir, seeds, writer);
   assert.equal(requests, 3);
+  assert.equal(maxActive, 1, 'prototype timing runs must be sequential');
   assert.equal(collections, 1, 'generation never fetches Reddit');
   assert.equal(new Set(contexts.map(c => c.systemPrompt)).size, 3);
   assert.equal(new Set(contexts.map(c => c.messages[0].content)).size, 1, 'all voices receive identical material');
@@ -152,12 +161,17 @@ try {
     assert.equal(sample.sourceId, sourceId(packet));
     assert.ok(sample.request.userPrompt.includes(comments[0].text));
   }
-  const bloggerBefore = await readFile(join(dir, 'blogger.json'), 'utf8');
-  await assert.rejects(() => generateSample(dir, packet, 'student', writer), /already exists/);
-  assert.equal(requests, 3);
-  await generateSample(dir, packet, 'student', writer, true);
+  const originalPath = join(dir, 'attempts', attemptName(1, 'student') + '.json');
+  const originalBefore = await readFile(originalPath, 'utf8');
+  const bloggerPath = join(dir, 'attempts', attemptName(2, 'blogger') + '.json');
+  const bloggerBefore = await readFile(bloggerPath, 'utf8');
+  const replay = await generateAttempt(dir, seedFromAttempt(samples[0]), writer);
+  assert.equal(replay.attemptId, 4);
+  assert.equal(replay.replayOf, 1);
+  assert.deepEqual(replay.request, samples[0].request);
   assert.equal(requests, 4);
-  assert.equal(await readFile(join(dir, 'blogger.json'), 'utf8'), bloggerBefore, 'single voice rerun preserves other samples');
+  assert.equal(await readFile(originalPath, 'utf8'), originalBefore, 'reruns never overwrite their original');
+  assert.equal(await readFile(bloggerPath, 'utf8'), bloggerBefore, 'single voice rerun preserves other samples');
   const req = await buildRequest(packet, 'student');
   assert.ok(req.systemPrompt.includes('nihilistic college student'));
   assert.ok(!req.systemPrompt.includes('mommy blogger'));
@@ -171,12 +185,21 @@ try {
     stopReason: 'stop', provider: model.provider, model: model.id, content: [{ type: 'text', text: prose }]
   }) }, 'test-model');
   await assert.rejects(() => noAudit.generate(req), /isolation check/);
-  const broken = await generateSample(dir, packet, 'student', {
+  const broken = await generateAttempt(dir, seeds[0], {
     model: 'fake', thinking: 'xhigh', generate: async () => { throw new Error('usage limit reached'); }
-  }, true);
+  });
   assert.equal(broken.status, 'error');
-  assert.equal((await readSample(dir, 'student'))?.error, 'usage limit reached');
+  assert.equal((await getAttempt(dir, broken.attemptId)).error, 'usage limit reached');
   assert.equal(requests, 4, 'no recovery/rewrite calls');
+  const offWriter = makePiWriter({ ...runtime, completeSimple: async (model, context, options) => {
+    assert.equal(options.reasoning, undefined, 'off omits Pi reasoning, rather than requesting low');
+    options.onPayload({ ...payload({ systemPrompt: context.systemPrompt, userPrompt: context.messages[0].content }), reasoning: { effort: 'none' } });
+    return { stopReason: 'stop', provider: model.provider, model: model.id, content: [{ type: 'text', text: prose }] };
+  } }, 'test-model', 'off');
+  const off = await offWriter.generate(req);
+  assert.equal(off.thinking, 'off');
+  assert.equal(off.audit.reasoningEffort, 'none');
+  assert.throws(() => verifyPayload(payload(req), req, 'off'), /isolation/, 'off must fail closed if provider inserts reasoning');
   assert.equal(preparePassage('“Hello,” she said.').text, '"Hello," she said.');
   assert.equal(preparePassage('Short.').warnings.length, 1);
   assert.throws(() => preparePassage('Line one.\nLine two.'), /paragraph/);

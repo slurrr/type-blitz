@@ -37,7 +37,7 @@ export const VOICES = {
 } as const;
 export type VoiceId = keyof typeof VOICES;
 
-export const THINKING_LEVELS = ['low', 'medium', 'high', 'xhigh'] as const;
+export const THINKING_LEVELS = ['off', 'low', 'medium', 'high', 'xhigh'] as const;
 export type ThinkingLevel = typeof THINKING_LEVELS[number];
 
 export interface WriterRequest {
@@ -54,6 +54,7 @@ export interface WriterResult {
     tools: string[];
     messageRoles: string[];
     payloadVerified: boolean;
+    reasoningEffort?: string;
   };
   usage?: { input: number; output: number; cacheRead: number; cacheWrite: number };
 }
@@ -61,6 +62,24 @@ export interface Writer {
   model: string;
   thinking: ThinkingLevel;
   generate(request: WriterRequest): Promise<WriterResult>;
+}
+
+export const RATINGS = ['good', 'mid', 'bad'] as const;
+export type Rating = typeof RATINGS[number];
+export interface Review {
+  rating?: Rating;
+  note: string;
+  updatedAt: string;
+}
+export type Reviews = Record<string, Review>;
+
+export interface Attempt extends PreviewSample {
+  attemptId: number;
+  promptId: string;
+  source: { title: string; year: number };
+  execution: 'sequential' | 'parallel' | 'unknown';
+  replayOf?: number;
+  importedFrom?: { file: string; sha256: string };
 }
 
 export interface PreviewSample {

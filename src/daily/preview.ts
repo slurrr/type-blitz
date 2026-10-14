@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanText } from './reddit.js';
-import { VOICES, type PreviewSample, type SourcePacket, type VoiceId, type Writer, type WriterRequest } from './types.js';
+import { type PreviewSample, type SourcePacket, type VoiceId, type WriterRequest } from './types.js';
 
 export function sourceId(packet: SourcePacket): string {
   return createHash('sha256').update(JSON.stringify(packet)).digest('hex');
@@ -17,7 +17,7 @@ export async function saveJson(path: string, value: unknown): Promise<void> {
     await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error; });
   }
 }
-async function readJson(path: string): Promise<unknown> {
+export async function readJson(path: string): Promise<unknown> {
   const text = await readFile(path, 'utf8');
   if (text.length > 128_000) throw new Error('Preview artifact exceeds the 128 KB limit.');
   return JSON.parse(text);
@@ -84,49 +84,6 @@ export function preparePassage(raw: string): { text: string; warnings: string[] 
   }
   const words = text.split(/\s+/).length;
   return { text, warnings: words < 45 || words > 60 ? [`${words} words; target is 45-60. Kept for human review.`] : [] };
-}
-
-export async function generateSample(
-  directory: string, packet: SourcePacket, voice: VoiceId, writer: Writer, replace = false
-): Promise<PreviewSample> {
-  const path = join(directory, voice + '.json');
-  if (!replace) {
-    try {
-      await readFile(path);
-      throw new Error(`${voice}.json already exists. Use --replace to explicitly rerun this voice.`);
-    } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-  }
-  const request = await buildRequest(packet, voice);
-  const sample: PreviewSample = {
-    version: 1, voice, label: VOICES[voice], sourceId: sourceId(packet),
-    createdAt: new Date().toISOString(), model: writer.model, thinking: writer.thinking, request, status: 'pending'
-  };
-  // Save the exact input before the call. Interrupted or failed calls are visible, not silently retried.
-  await saveJson(path, sample);
-  const start = performance.now();
-  try {
-    sample.result = await writer.generate(request);
-    if (sample.result.model !== writer.model || sample.result.thinking !== writer.thinking) throw new Error('Unexpected model/thinking substitution.');
-    const { text, warnings } = preparePassage(sample.result.text);
-    sample.passage = {
-      id: `daily-${sample.sourceId.slice(0, 12)}-${voice}`,
-      title: packet.post.title, author: VOICES[voice], genre: 'Daily AI / Reddit',
-      year: new Date(packet.fetchedAt).getUTCFullYear(), text
-    };
-    sample.warnings = warnings;
-    sample.status = 'ready';
-  } catch (error) {
-    sample.status = 'error';
-    sample.error = cleanText(error instanceof Error ? error.message : String(error), 1200);
-  }
-  sample.elapsedMs = Math.round(performance.now() - start);
-  await saveJson(path, sample);
-  return sample;
-}
-
-export async function readSample(directory: string, voice: VoiceId): Promise<PreviewSample | undefined> {
-  try { return await readJson(join(directory, voice + '.json')) as PreviewSample; }
-  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw error; }
 }
 
 export function formatPacket(packet: SourcePacket): string {

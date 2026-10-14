@@ -1,137 +1,180 @@
 # Daily passage voice experiment
 
-Standalone; nothing in this module is imported by the game. First prove the writing,
-then integrate it. No scheduler, daily cache policy, weather collector, or new menu yet.
+Standalone; nothing here is imported by the game. First prove the writing, then
+integrate it. No daily scheduler/cache policy, weather collector or new menu yet.
 
 ## Try it
 
-Requires the existing `bb-browser` with a running accessible browser, and the globally
-installed `@earendil-works/pi-coding-agent` with an OpenAI/Codex login. No new credentials
-are required on this workstation. The prototype does not install either tool or alter
-browser/account configuration.
+Requires `bb-browser` with an accessible browser and a globally installed
+`@earendil-works/pi-coding-agent` with an OpenAI/Codex login. No new credentials
+are required on this workstation. The prototype does not alter browser/account setup.
 
 From the repository root:
 
 ```sh
-# One bounded Reddit collection. Existing context is reused without any browser access.
+# Fetch once, then reuse this packet without more browser access.
 npm run daily:preview -- collect
 
-# Inspect the frozen discussion; no network/model calls.
+# Inspect current input/latest results, or the complete history table.
 npm run daily:preview -- show
+npm run daily:preview -- list
+npm run daily:preview -- list --by-prompt  # Quality counts, including bad results
 
-# Initially make three independent calls on that same input.
+# First batch: one independent call at a time, each with a new permanent ID.
 npm run daily:preview -- generate
 
-# Edit prompts/daily/student.md, then explicitly replace just that voice's last attempt.
-npm run daily:preview -- generate student --replace
+# Inspect an exact historical passage, instructions, and (optionally) source input.
+npm run daily:preview -- show 001 --prompt
+npm run daily:preview -- show 001 --input
+npm run daily:preview -- show 001 --json
 
-# Explicit model/thinking comparison, still using the same frozen input.
-npm run daily:preview -- generate student --model gpt-5.6-luna --thinking high --replace
+# Human review, separate from immutable generation records.
+npm run daily:preview -- mark 001 good --note "This voice works."
+npm run daily:preview -- mark 002 mid --note "Worth revisiting."
+npm run daily:preview -- mark 003 bad --note "Why it missed."
+npm run daily:preview -- review                # Good only
+npm run daily:preview -- review --include-mid  # Good first, then mid; never bad
 
-# Only when you actually want new source material:
+# Edit prompts/daily/student.md and generate a NEW attempt using that edit.
+npm run daily:preview -- generate student
+
+# Controlled comparison: EXACT archived instructions AND input, no current files.
+npm run daily:preview -- generate --from 001,002,003 --thinking off
+npm run daily:preview -- generate --from 001 --model gpt-5.6-luna --thinking high
+
+# Only when you actually want a new topic:
 npm run daily:preview -- collect --refresh
 ```
 
-Defaults: **openai-codex/gpt-5.6-luna, xhigh reasoning**. `--thinking` accepts low,
-medium, high, xhigh. Model IDs must be physical OpenAI/Codex models in the installed
-Pi catalog; a listing alone does not guarantee the subscription backend accepts one.
-There is no model fallback or automatic retry. Each call times out after five minutes.
+The numbered examples above illustrate commands; use `list` to choose your actual IDs.
+Existing baseline 001/student and 003/satirist are marked good from user feedback.
+002/blogger is marked mid from the user's “fine” assessment, retaining their note
+about audience versus personal preference. These are quality judgments, not favorites.
+New results start unreviewed (shown as unrated); that is not a fourth quality tier.
 
-`student`, `blogger`, `satirist`, or `all` select calls. Omitting the voice means all.
-Existing attempts require `--replace`, including failed/interrupted attempts. `show`
-is always read-only. Invoking the command without a subcommand only displays help.
+### Model and timing
 
-## Small, visible artifacts
+Defaults: **openai-codex/gpt-5.6-luna, xhigh**. `--thinking` accepts off, low,
+medium, high, xhigh. Off is verified as `reasoning.effort: none` in the actual outgoing
+payload, not silently mapped to low. Unsupported effort/model requests fail; there
+is no fallback or automatic retry. Each call times out after five minutes.
 
-Default: `~/runs/type-blitz/daily-preview/`. Override with `--dir <path>` before the
-subcommand, or `TYPE_BLITZ_DAILY_DIR`. Keep generated state outside the source repo.
+All prototype generations are **sequential** for easier per-call timing comparisons.
+Output reports individual request duration, generation-batch wall time, and wall time
+including preparation. Per-attempt durations and execution mode are archived. Batch
+wall time is printed, not a separate persisted experiment record. Later game generation
+should be parallel for low wall-clock latency; the game is not integrated here.
 
-- `context.json`: one frozen topic and its cleaned comment branches.
-- `student.json`, `blogger.json`, `satirist.json`: latest explicit attempt per voice.
-  Includes exact instructions/input, source SHA256, model/thinking, timestamp, duration,
-  token usage, raw prose, normalized ordinary `Passage`, and payload-isolation audit.
-- `.lock`: only while collecting/generating. Contains the process PID. After interruption,
-  check that PID before manually removing a stale lock. There is no background worker.
+Token counts describe subscription usage, not a dollar invoice; output counts may
+include reasoning. Single runs are observations, not controlled performance benchmarks.
 
-A refresh replaces the packet, not the samples. `show` labels samples with a different
-source hash as stale instead of mixing experiments. Explicit replacement overwrites the
-selected voice's old result; there is intentionally no automatic archive/database.
+## Immutable history and marks
 
-Generated prose is retained without an LLM rewrite/evaluator. Simple typography is
-normalized for typing. Empty, multiline, non-ASCII or formatted output is flagged as
-an error with raw output retained; a length outside 45–60 words is a visible warning.
-Errors are recorded per voice, so one failure doesn't hide other successful samples.
+Default directory: `~/runs/type-blitz/daily-preview/`. Override with `--dir <path>`
+before the subcommand or `TYPE_BLITZ_DAILY_DIR`. Keep runtime data outside source.
 
-Token counts describe subscription usage, not a dollar invoice. Output tokens can
-include model reasoning. No credentials, headers, hidden reasoning or agent sessions
-are saved in these artifacts.
+- `context.json`: current frozen topic. Refresh can replace this, but not archived inputs.
+- `attempts/001-student.json`, etc.: permanent numbered records. Includes exact prompts
+  and input, generated/raw text, model/effort, time, token usage, source/prompt SHA256s,
+  normalized ordinary `Passage`, and isolation audit. `replayOf` connects a comparison
+  to its original. Prompt hash covers system/voice instructions; source hash covers
+  the frozen packet. Same hashes let you recognize unchanged experimental inputs.
+- `reviews.json`: editable **good / mid / bad** marks, notes and review timestamps.
+  `mark ID unrated` clears a mark. Omitting `--note` preserves an existing note;
+  explicitly passing an empty note clears it. Reviews never alter attempt files.
+- `.lock`: contains the active writer/collector/reviewer PID. If interrupted, check
+  that PID before manually removing a stale lock. No worker/scheduler owns it.
+
+`list` includes everything: good/mid/bad/unrated, errors and interrupted requests.
+`review` includes only ready passages marked good; `--include-mid` adds mid after good.
+Bad, unrated and failed records never enter the reading selection, but remain available
+through `list` and explicit `show ID`. `list --by-prompt` counts good/mid/bad and
+unreviewed results for each exact prompt + model + thinking setting, and includes
+all attempt IDs. Bad results are evidence for improving prompts, never discarded.
+The counts describe human quality judgments; there is no automated score or ranking.
+
+There is **no replace/delete command**. Every explicit generation appends an attempt.
+Final JSON is published atomically and exclusively, then remains read-only; the
+application never rewrites it. A `.pending.json` holds the exact request during a call.
+On completion it is superseded by a separate immutable final record and removed.
+If interrupted, pending stays visible, its ID stays consumed, and no retry runs
+silently. After a refresh, `show` without an ID displays only the latest attempts
+matching the current source; numbered `show` and review work across all sources.
+
+Git tracks the code and editable prompt files. Runtime history tracks what was
+actually sent and returned, independent of whether the prompt changes were committed.
+Keep/back up the runtime directory if these experiments matter; read-only files are
+not a substitute for a backup and the owner can still manually remove them.
+
+### Import the original prototype results
+
+```sh
+npm run daily:preview -- migrate --execution parallel
+```
+
+This imports the original `student.json`, `blogger.json`, and `satirist.json` without
+changing a byte of them. Exact file hashes make repeated migration idempotent. Source
+metadata comes from their saved input, not the current context. Execution defaults
+to unknown; the initial batch in this project was known to be parallel. The preserved
+legacy files are never written again by the new CLI. No credentials are archived.
 
 ## Boundaries
 
-- `reddit.ts`: pure eligibility and cleanup functions. Frozen typed input is
-  `SourcePacket`; post claims are separate from comments/replies and their votes.
-- `browser.ts`: fixed browser commands and JSON reads. Exactly one feed navigation
-  (first 25 popular/hot posts), then one comments request for the selected post
-  (`sort=top`, bounded limit/depth). No recursive `more` downloads, page reloads,
-  browser agent, account changes, or HTTP retries. The owned tab is targeted by ID
-  and closed in `finally`; other tabs are untouched.
+- `reddit.ts`: pure eligibility/cleanup functions. Source claims stay separate from
+  comment branches, replies and votes.
+- `browser.ts`: one feed navigation (first 25 popular/hot posts), then one bounded
+  comments request. No recursive `more` downloads, HTTP retries, reloads or LLM
+  browsing agent. The owned tab is targeted by ID and closed; other tabs are untouched.
 - `pi.ts`: replaceable `Writer.generate({ systemPrompt, userPrompt })` transport.
-  Uses **Pi's ModelRuntime directly**, not AgentSession/CLI. No resource discovery,
-  coding prompt, settings, skills, extensions, tools, memory, prompt templates, or
-  automatically appended instructions. Default model overrides are not loaded.
-- `preview.ts`: frozen input, editable prompts, latest-attempt persistence, validation
-  and human-readable output. It cannot fetch Reddit during generation.
-- `../dailyPreview.ts`: CLI composition, three concurrent independent calls.
-- `../../prompts/daily/`: `shared.md` is format/source-handling guidance; each voice
-  has its own short file. Every request receives shared + only that voice, never the
-  other samples or voice prompts. The identical source packet is the user message.
+  Uses **Pi's ModelRuntime directly**, not AgentSession/CLI. No coding prompt, tools,
+  history, resource discovery, skills, extensions, settings, templates, appended
+  instructions or model overrides. Existing credentials remain inside Pi.
+- `preview.ts`: frozen input, current editable prompts, prose validation/display.
+- `history.ts`: immutable attempts, migration, exact replay, sequential calls, reviews.
+- `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
+- `../../prompts/daily/`: shared format/source guidance plus independent voice files.
+  A request contains shared + only its voice. No other voice's instructions/results.
 
-Pi is loaded from the global npm package directory, avoiding a coding-agent dependency
-in the game. For a different installation, set `TYPE_BLITZ_PI_ROOT` to the Pi package
-root containing `package.json` and `dist/index.js`. Pi owns normal credential resolution
-and OAuth refresh; the prototype never exports tokens. It uses the provider's normal
-subscription transport. A normal API transport can later replace `pi.ts` without
-changing source extraction, prompts or the game.
+Pi loads from the global npm package directory so the game has no coding-agent
+package dependency. For a different installation, `TYPE_BLITZ_PI_ROOT` can point to
+its package root containing `package.json` and `dist/index.js`. A normal API transport
+can later replace `pi.ts` independently of prompts, history, extraction and the game.
 
-Before sending each request, `onPayload` asserts the actual provider payload has exactly
-the intended instructions and single user input, no tools, no stored response, and the
-requested thinking level. Unexpected injection or silent reasoning downgrades fail
-closed. There is no agent loop or generation-recovery loop.
+`onPayload` checks the actual provider payload before sending: exact instructions,
+exact single user input, requested effort, no tools or response storage. Unexpected
+injection or effort downgrades fail closed. No hidden reasoning, credentials, headers
+or agent sessions are written to artifacts. Raw generated prose is kept without an
+LLM rewrite. Typography is normalized for typing; malformed output is visibly flagged,
+and word counts outside 45–60 produce a warning without discarding the prose.
 
 ## Extraction limits and account care
 
-The selection rule is conservative and mechanical, not a semantic classifier. It looks
-for a recent (72-hour) post with 20+ comments and descriptive text; removes deleted/
-moderator/bot material, duplicate comments and image-only replies; keeps up to six
-substantive top-level comments and two replies each with their parent relationship.
-Media posts require substantial post text. No article or media interpretation is attempted.
-A recent post need not describe a newly occurring event. Inspect the packet before writing.
+Eligibility is mechanical, not a semantic classifier: recent (72-hour) post, 20+
+comments, descriptive text. Cleanup removes deleted/moderator/bot material, duplicate
+comments and image-only replies. Keep up to six substantive top-level comments and two
+replies each with parent links. Media posts require substantial post text. No article
+or media interpretation is attempted. A fresh post may describe an older event.
+Inspect the packet before writing; thread claims are not independently verified.
 
-This uses public `r/popular/hot`, **not the account's home feed or subscriptions**, but
-browser/session/region effects are not ruled out. Do not present a top-comment sample
-as universal public consensus. Post text and comments are not independently verified.
+The public `r/popular/hot` feed is used, not the account's home feed/subscriptions,
+but account/session/region effects are not ruled out. Top votes aren't universal
+consensus. Freeze once and iterate on saved material to minimize account traffic.
 
-The first browser trial exposed two transport issues now handled locally: navigation
-can destroy the initial blank document before JSON is ready (bounded DOM readiness
-checks, no new HTTP requests), and bb-browser can truncate large piped stdout on exit
-(a temporary regular output file is parsed and deleted instead). Blocks/login pages
-stop collection; there is no anti-bot workaround or retry loop. Freeze once, then do
-all voice/model iteration offline from Reddit. This is not a server-ready access design.
+Browser navigation readiness is checked through bounded local DOM reads (no HTTP
+retry). Large CLI output uses a temporary regular file, deleted after parsing,
+because bb-browser can truncate piped stdout when exiting. Blocks/login pages stop
+collection. This browser transport is a local prototype, not server-ready access.
 
-## Tests and future direction
+## Tests and eventual game mode
 
-`npm run build && npm test` includes fixture/fake-transport tests for extraction,
-reply relationships, cleanup, bounds, tab ownership/readiness/failure cleanup, frozen
-input reuse, independent voice contexts, outgoing payload isolation, exact thinking
-selection, per-voice reruns and failed generation. Tests do not call Reddit or an LLM.
+`npm run build && npm test` covers extraction, tab ownership/readiness/cleanup, input
+reuse, prompt isolation, exact reasoning selection (including off), sequential calls,
+immutable publication, migration, review filters, exact replay and interruption/failure
+retention. Fixtures/fake transports only: tests never call Reddit or an LLM.
 
-After writing quality is proven, the intended first game menu entry is exactly
-`QUICK PLAY (DAILY GEN AI)`. Its separate mode would consume ordinary passages:
-Helena, Montana weather today + extended forecast, two distinct headlines, and two
-buzz topics, with different voices/perspectives. Weather must start with the location
-and accurately deliver the forecast; it can simply sound like a local weather anchor.
-
-One collection refresh on days the user actually launches the game, not one mandatory
-model call and not an unattended daily scheduler. Six calls are fine if useful. Keep
-classic play responsive while generation happens in the background. None of that is
-implemented by this prototype.
+The eventual first menu entry is exactly `QUICK PLAY (DAILY GEN AI)`: Helena today +
+extended weather, two news stories and two buzz topics, with varied voices. Weather
+starts with the location and accurately delivers the forecast. One collection refresh
+on launch-days, not necessarily one model call; no unattended daily scheduler.
+Keep classic gameplay responsive and generate in parallel for the game. None of
+that integration is implemented yet.

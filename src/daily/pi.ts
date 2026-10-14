@@ -14,7 +14,7 @@ export interface PiContext {
   tools: never[];
 }
 export interface PiOptions {
-  reasoning: ThinkingLevel;
+  reasoning: Exclude<ThinkingLevel, 'off'> | undefined;
   maxTokens: number;
   maxRetries: number;
   transport: 'sse';
@@ -44,7 +44,7 @@ export function verifyPayload(payload: unknown, request: WriterRequest, thinking
     tool_choice?: string; store?: boolean; reasoning?: { effort?: string };
   } | null;
   if (!p || p.instructions !== request.systemPrompt || (p.tools?.length ?? 0) !== 0 ||
-      p.tool_choice !== 'none' || p.store !== false || p.reasoning?.effort !== thinking || !Array.isArray(p.input) || p.input.length !== 1 ||
+      p.tool_choice !== 'none' || p.store !== false || p.reasoning?.effort !== (thinking === 'off' ? 'none' : thinking) || !Array.isArray(p.input) || p.input.length !== 1 ||
       p.input[0].role !== 'user' || !Array.isArray(p.input[0].content) || p.input[0].content.length !== 1 ||
       p.input[0].content[0].type !== 'input_text' || p.input[0].content[0].text !== request.userPrompt) {
     throw new Error('Writer isolation check failed: unexpected prompt, history, storage or tools. Request not sent.');
@@ -67,7 +67,7 @@ export function makePiWriter(runtime: PiRuntime, modelId: string, thinking: Thin
       };
       // No AgentSession, resource loader, settings, tools, or saved conversations are constructed.
       const response = await runtime.completeSimple(model, context, {
-        reasoning: thinking, maxTokens: 16384, maxRetries: 0, transport: 'sse',
+        reasoning: thinking === 'off' ? undefined : thinking, maxTokens: 16384, maxRetries: 0, transport: 'sse',
         cacheRetention: 'none', toolChoice: 'none', signal: AbortSignal.timeout(300_000),
         onPayload(payload) {
           verifyPayload(payload, request, thinking);
@@ -88,7 +88,8 @@ export function makePiWriter(runtime: PiRuntime, modelId: string, thinking: Thin
         text: response.content.filter(c => c.type === 'text').map(c => c.text ?? '').join(''),
         audit: {
           systemPrompt: context.systemPrompt, userPrompt: request.userPrompt,
-          tools: [], messageRoles: ['user'], payloadVerified: verified
+          tools: [], messageRoles: ['user'], payloadVerified: verified,
+          reasoningEffort: thinking === 'off' ? 'none' : thinking
         },
         // Never persist auth, headers, hidden reasoning, or a full provider response.
         usage: response.usage && {
