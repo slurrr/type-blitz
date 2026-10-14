@@ -39,7 +39,8 @@ export const VOICES = {
 export const WEATHER_VOICES = {
   ...VOICES,
   weatherman: 'Local weather anchor',
-  'weather-friend': 'Relatable weather observer'
+  'weather-friend': 'Relatable weather observer',
+  'weather-dark': 'Dark local weather presenter'
 } as const;
 export const ALL_VOICES = WEATHER_VOICES;
 export type VoiceId = keyof typeof ALL_VOICES;

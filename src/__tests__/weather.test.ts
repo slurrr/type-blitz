@@ -91,7 +91,12 @@ try {
   assert.equal(await readFile(join(directory, 'weather-context.json'), 'utf8'), before, 'failed refresh keeps frozen evidence');
   const prompts = await Promise.all((Object.keys(WEATHER_VOICES) as VoiceId[]).map(v => buildWeatherRequest(frozen, v, 'today')));
   assert.equal(new Set(prompts.map(p => p.userPrompt)).size, 1);
-  assert.equal(new Set(prompts.map(p => p.systemPrompt)).size, 5);
+  assert.equal(new Set(prompts.map(p => p.systemPrompt)).size, 6);
+  assert.ok(prompts[5].systemPrompt.includes('pessimistic mirror'));
+  assert.ok(!prompts[4].systemPrompt.includes('pessimistic mirror'));
+  const dark = await buildWeatherRequest(frozen, 'weather-dark', 'feel');
+  assert.ok(dark.systemPrompt.includes('whether it offers comfort or makes the weather feel worse'));
+  assert.equal(dark.userPrompt, (await buildWeatherRequest(frozen, 'weather-friend', 'feel')).userPrompt);
   assert.ok(prompts[0].systemPrompt.includes('nihilistic college student'));
   assert.ok(!prompts[0].systemPrompt.includes('post and comments'), 'weather does not inherit Reddit-specific instructions');
   assert.ok(!prompts[3].systemPrompt.includes('nihilistic college student'));
@@ -122,7 +127,13 @@ try {
     '--import', 'tsx', 'src/dailyPreview.ts', '--dir', directory, 'weather', ...args
   ], { timeout: 15_000 });
   const dry = await cli('generate', 'all', '--mode', 'feel', '--dry-run');
-  assert.ok(dry.stdout.includes('5 prompt(s); zero model calls and zero attempts.'));
+  assert.ok(dry.stdout.includes('6 prompt(s); zero model calls and zero attempts.'));
+  const variants = ['gpt-6.1-sol:low', 'gpt-6-astra:low', 'gpt-5.6-luna:off'];
+  const matrix = await cli('generate', 'all', '--mode', 'feel', '--parallel', '--dry-run', ...variants.flatMap(v => ['--variant', v]));
+  assert.ok(matrix.stdout.includes('6 voices x 3 variants = 18 calls (parallel)'));
+  await assert.rejects(() => cli('generate', '--dry-run', '--variant', variants[0], '--variant', variants[0]), /Duplicate/);
+  await assert.rejects(() => cli('generate', '--dry-run', '--model', 'fixture', '--variant', variants[0], '--variant', variants[1]), /not both/);
+  await assert.rejects(() => cli('generate', '--dry-run', '--model', 'fixture'), /Choose --model and --thinking/);
   assert.equal((await listAttempts(directory)).length, 2);
   await assert.rejects(() => cli('generate'), /Choose --model and --thinking/);
   assert.ok((await cli('show')).stdout.includes('USER REPORT'));

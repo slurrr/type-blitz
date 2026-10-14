@@ -95,9 +95,11 @@ include reasoning. Single runs are observations, not controlled performance benc
 
 ## Weather experiments
 
-No model is selected by this extension. Weather generation **requires explicit
-`--model` and `--thinking`**; `--dry-run` requires neither and never loads credentials
-or creates attempts. The old Reddit generation defaults are unchanged.
+Weather generation **requires explicit `--model` and `--thinking`**, or repeatable
+`--variant model:thinking` for a multi-model matrix. The two forms cannot be mixed;
+duplicate variants are rejected. `--dry-run` requires neither and never loads credentials
+or creates attempts. With variants supplied it also prints the planned call count.
+The old Reddit generation defaults are unchanged.
 
 ```sh
 # Public NWS: one points lookup + one forecast fetch for Helena, Montana.
@@ -118,8 +120,13 @@ npm run daily:preview -- weather generate all --mode feel --dry-run
 # After choosing MODEL and EFFORT, replace dry-run with explicit settings.
 npm run daily:preview -- weather generate weatherman --mode today --model "$MODEL" --thinking "$EFFORT"
 npm run daily:preview -- weather generate weather-friend --mode feel --model "$MODEL" --thinking "$EFFORT"
-# all = FIVE calls, sequential unless --parallel is explicitly supplied.
+# all = SIX voices, one call per model/voice; sequential unless --parallel is supplied.
 npm run daily:preview -- weather generate all --mode feel --model "$MODEL" --thinking "$EFFORT" --parallel
+
+# Explicit 18-call matrix: six voices x three settings, same frozen input.
+# Add --dry-run to inspect without generating.
+npm run daily:preview -- weather generate all --mode feel --parallel \
+  --variant gpt-6.1-sol:low --variant gpt-6-astra:low --variant gpt-5.6-luna:off
 ```
 
 Modes and voices are independent:
@@ -132,6 +139,8 @@ Modes and voices are independent:
   chuckle; no compulsory joke or invented prediction.
 - **weatherman**: deliberately generic, clear, friendly local weather anchor.
 - **weather-friend**: warm, wry local observer.
+- **weather-dark**: its pessimistic mirror; notices the catch in sunshine and lets
+  miserable weather stay miserable. Restrained, dry negativity, not theatrical doom.
 - Existing **student / blogger / satirist** voice files can also be tried unchanged.
   They get weather grounding instructions, not Reddit's post/comment guidance.
 
@@ -274,7 +283,7 @@ reuse, prompt isolation, exact reasoning selection (including off), sequential c
 immutable publication, migration, review filters, exact replay, same-voice concurrent
 ID reservation/failure isolation, and interruption/failure retention. Weather tests
 cover public-request boundaries, source attribution, local-date selection, missing
-forecast rejection, five isolated voices, dry-run CLI, and immutable weather replay.
+forecast rejection, six isolated voices, dry-run CLI matrix validation, and immutable weather replay.
 Fixtures/fake transports only: tests never call Reddit, NWS or an LLM.
 
 The eventual first menu entry is exactly `QUICK PLAY (DAILY GEN AI)`: Helena today +
