@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { collectReddit } from './daily/browser.js';
 import { createPiWriter, DEFAULT_MODEL, DEFAULT_THINKING } from './daily/pi.js';
 import { collectOnce, formatPacket, readPacket, sourceId, withPreviewLock } from './daily/preview.js';
-import { formatAttempt, formatPromptTable, formatTable, generateSequential, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket } from './daily/history.js';
-import { RATINGS, THINKING_LEVELS, VOICES, type Rating, type VoiceId } from './daily/types.js';
+import { formatAttempt, formatPromptTable, formatTable, generateParallel, generateSequential, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket } from './daily/history.js';
+import { RATINGS, THINKING_LEVELS, VOICES, type Rating, type ThinkingLevel, type VoiceId } from './daily/types.js';
 
 const program = new Command()
   .name('daily-preview')
@@ -98,6 +98,30 @@ program.command('review')
     const attempts = reviewAttempts(await listAttempts(dir), reviews, options.includeMid);
     if (!attempts.length) console.log('No marked passages in this review selection. Use list and mark first.');
     for (const attempt of attempts) console.log(formatAttempt(attempt, reviews));
+  });
+
+program.command('compare')
+  .description('CONCURRENT thinking-level comparison using one exact archived prompt/input; generates new attempts')
+  .argument('<id>', 'source attempt ID')
+  .requiredOption('--model <id>', 'physical openai-codex model')
+  .option('--thinking <levels>', 'distinct comma-separated levels', 'low,xhigh')
+  .action(async (id: string, options) => {
+    const levels = String(options.thinking).split(',');
+    if (levels.length < 2 || new Set(levels).size !== levels.length ||
+        levels.some(level => !THINKING_LEVELS.includes(level as ThinkingLevel))) {
+      throw new Error('Choose at least two distinct thinking levels from off,low,medium,high,xhigh.');
+    }
+    const { dir } = program.opts();
+    await withPreviewLock(dir, async () => {
+      const preparationStart = performance.now();
+      const seed = seedFromAttempt(await getAttempt(dir, parseId(id)));
+      const writers = await Promise.all(levels.map(level => createPiWriter(options.model, level as ThinkingLevel)));
+      const reviews = await readReviews(dir);
+      console.log(`Comparing ${levels.join(' / ')} CONCURRENTLY on exact prompt/input from #${id}. No Reddit requests.`);
+      const batch = await generateParallel(dir, seed, writers, attempt => console.log(formatAttempt(attempt, reviews)));
+      console.log(`\nComparison wall time: ${(batch.wallMs / 1000).toFixed(2)} s; with preparation: ${((performance.now() - preparationStart) / 1000).toFixed(2)} s.`);
+      if (batch.attempts.some(a => a.status !== 'ready')) process.exitCode = 1;
+    });
   });
 
 program.command('generate')

@@ -42,6 +42,9 @@ npm run daily:preview -- generate student
 npm run daily:preview -- generate --from 001,002,003 --thinking off
 npm run daily:preview -- generate --from 001 --model gpt-5.6-luna --thinking high
 
+# Explicit concurrent low-vs-xhigh comparison, one voice and the SAME archived input.
+npm run daily:preview -- compare 001 --model gpt-6-astra --thinking low,xhigh
+
 # Only when you actually want a new topic:
 npm run daily:preview -- collect --refresh
 ```
@@ -50,7 +53,9 @@ The numbered examples above illustrate commands; use `list` to choose your actua
 Existing baseline 001/student and 003/satirist are marked good from user feedback.
 002/blogger is marked mid from the user's “fine” assessment, retaining their note
 about audience versus personal preference. These are quality judgments, not favorites.
-New results start unreviewed (shown as unrated); that is not a fourth quality tier.
+The user also rated Luna/no-thinking results 004–006 good, judging them as good as
+xhigh for this quick generation task. New results start unreviewed (shown as unrated);
+that is not a fourth quality tier.
 
 ### Model and timing
 
@@ -59,8 +64,12 @@ medium, high, xhigh. Off is verified as `reasoning.effort: none` in the actual o
 payload, not silently mapped to low. Unsupported effort/model requests fail; there
 is no fallback or automatic retry. Each call times out after five minutes.
 
-All prototype generations are **sequential** for easier per-call timing comparisons.
-Output reports individual request duration, generation-batch wall time, and wall time
+The normal `generate` command is **sequential** for easier per-call timing comparisons.
+`compare ID --model MODEL --thinking low,xhigh` is explicitly **concurrent**: one call
+per requested effort, using the same archived voice prompt/source. IDs are reserved
+serially before calls start, and all calls/writes settle before releasing the lock.
+One failed model response does not discard the other result. Execution mode is recorded.
+Output reports individual request duration, batch wall time, and wall time
 including preparation. Per-attempt durations and execution mode are archived. Batch
 wall time is printed, not a separate persisted experiment record. Later game generation
 should be parallel for low wall-clock latency; the game is not integrated here.
@@ -130,7 +139,8 @@ legacy files are never written again by the new CLI. No credentials are archived
   history, resource discovery, skills, extensions, settings, templates, appended
   instructions or model overrides. Existing credentials remain inside Pi.
 - `preview.ts`: frozen input, current editable prompts, prose validation/display.
-- `history.ts`: immutable attempts, migration, exact replay, sequential calls, reviews.
+- `history.ts`: immutable attempts, migration, exact replay, sequential generation,
+  explicit parallel comparisons, and reviews.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
   A request contains shared + only its voice. No other voice's instructions/results.
@@ -169,7 +179,8 @@ collection. This browser transport is a local prototype, not server-ready access
 
 `npm run build && npm test` covers extraction, tab ownership/readiness/cleanup, input
 reuse, prompt isolation, exact reasoning selection (including off), sequential calls,
-immutable publication, migration, review filters, exact replay and interruption/failure
+immutable publication, migration, review filters, exact replay, same-voice concurrent
+ID reservation/failure isolation, and interruption/failure
 retention. Fixtures/fake transports only: tests never call Reddit or an LLM.
 
 The eventual first menu entry is exactly `QUICK PLAY (DAILY GEN AI)`: Helena today +

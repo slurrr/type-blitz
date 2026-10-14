@@ -92,19 +92,24 @@ export function seedFromAttempt(attempt: Attempt): GenerationSeed {
   };
 }
 
-/** Caller holds withPreviewLock; sequential preview calls ensure stable, collision-free IDs. */
-export async function generateAttempt(directory: string, seed: GenerationSeed, writer: Writer): Promise<Attempt> {
+/** Caller holds withPreviewLock. Reserve IDs serially, even for concurrent calls. */
+async function reserveAttempt(
+  directory: string, seed: GenerationSeed, writer: Writer, execution: 'sequential' | 'parallel'
+): Promise<Attempt> {
   await mkdir(join(directory, 'attempts'), { recursive: true });
   const id = await nextId(directory);
-  const path = join(directory, 'attempts', attemptName(id, seed.voice));
   const attempt: Attempt = {
     version: 1, attemptId: id, voice: seed.voice, label: VOICES[seed.voice],
     sourceId: seed.sourceId, source: structuredClone(seed.source), promptId: promptId(seed.request),
-    request: structuredClone(seed.request), replayOf: seed.replayOf, execution: 'sequential',
+    request: structuredClone(seed.request), replayOf: seed.replayOf, execution,
     createdAt: new Date().toISOString(), model: writer.model, thinking: writer.thinking, status: 'pending'
   };
   // If interrupted, this record survives. A later run gets a NEW ID; nothing resumes automatically.
-  await writeOnce(path + '.pending.json', attempt);
+  await writeOnce(join(directory, 'attempts', attemptName(id, seed.voice) + '.pending.json'), attempt);
+  return attempt;
+}
+async function completeAttempt(directory: string, attempt: Attempt, writer: Writer): Promise<Attempt> {
+  const path = join(directory, 'attempts', attemptName(attempt.attemptId, attempt.voice));
   const start = performance.now();
   try {
     attempt.result = await writer.generate(structuredClone(attempt.request));
@@ -113,8 +118,8 @@ export async function generateAttempt(directory: string, seed: GenerationSeed, w
     }
     const { text, warnings } = preparePassage(attempt.result.text);
     attempt.passage = {
-      id: `daily-${id}-${attempt.sourceId.slice(0, 12)}-${seed.voice}`,
-      title: seed.source.title, author: VOICES[seed.voice], year: seed.source.year, genre: 'Daily AI / Reddit', text
+      id: `daily-${attempt.attemptId}-${attempt.sourceId.slice(0, 12)}-${attempt.voice}`,
+      title: attempt.source.title, author: VOICES[attempt.voice], year: attempt.source.year, genre: 'Daily AI / Reddit', text
     };
     attempt.warnings = warnings;
     attempt.status = 'ready';
@@ -126,6 +131,26 @@ export async function generateAttempt(directory: string, seed: GenerationSeed, w
   await writeOnce(path + '.json', attempt);
   await unlink(path + '.pending.json');
   return attempt;
+}
+export async function generateAttempt(directory: string, seed: GenerationSeed, writer: Writer): Promise<Attempt> {
+  return completeAttempt(directory, await reserveAttempt(directory, seed, writer, 'sequential'), writer);
+}
+
+/** Explicit concurrent comparison; settle all writes before the caller releases the directory lock. */
+export async function generateParallel(
+  directory: string, seed: GenerationSeed, writers: Writer[], onAttempt: (attempt: Attempt) => void = () => {}
+): Promise<{ attempts: Attempt[]; wallMs: number }> {
+  const start = performance.now();
+  const pending: Attempt[] = [];
+  for (const writer of writers) pending.push(await reserveAttempt(directory, seed, writer, 'parallel'));
+  const results = await Promise.allSettled(pending.map(async (attempt, index) => {
+    const completed = await completeAttempt(directory, attempt, writers[index]);
+    onAttempt(completed);
+    return completed;
+  }));
+  const failures = results.filter(r => r.status === 'rejected');
+  if (failures.length) throw new AggregateError(failures.map(r => r.reason), 'Some comparison operations failed; inspect history and pending records.');
+  return { attempts: results.map(r => (r as PromiseFulfilledResult<Attempt>).value), wallMs: Math.round(performance.now() - start) };
 }
 
 export async function generateSequential(

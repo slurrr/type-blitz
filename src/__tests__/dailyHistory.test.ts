@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildRequest, sourceId, withPreviewLock } from '../daily/preview.js';
-import { attemptName, formatTable, generateAttempt, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket, summarizePrompts, writeOnce } from '../daily/history.js';
+import { attemptName, formatTable, generateAttempt, generateParallel, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket, summarizePrompts, writeOnce } from '../daily/history.js';
 import { VOICES, type PreviewSample, type SourcePacket, type VoiceId, type Writer } from '../daily/types.js';
 
 const packet: SourcePacket = {
@@ -112,6 +112,32 @@ try {
   await writeOnce(pendingPath.replace('.pending.json', '.json'), { ...pending, status: 'error', error: 'interrupted' });
   assert.equal((await getAttempt(dir, 5)).status, 'error', 'completed record takes priority over leftover pending');
   assert.equal((await listAttempts(dir)).length, 6);
+  let active = 0;
+  let peak = 0;
+  let calls = 0;
+  const concurrentWriters: Writer[] = (['low', 'xhigh'] as const).map(thinking => ({
+    ...fake, thinking,
+    async generate(request) {
+      calls++;
+      active++;
+      peak = Math.max(peak, active);
+      assert.equal((await listAttempts(dir)).filter(a => a.status === 'pending').length, 2, 'reserve all IDs before making calls');
+      await new Promise(resolve => setTimeout(resolve, 10));
+      active--;
+      if (thinking === 'low') throw new Error('one writer failed');
+      return { text: prose, model: fake.model, thinking,
+        audit: { systemPrompt: request.systemPrompt, userPrompt: request.userPrompt,
+          tools: [], messageRoles: ['user'], payloadVerified: true } };
+    }
+  }));
+  const concurrent = await withPreviewLock(dir, () => generateParallel(dir, seed, concurrentWriters));
+  assert.equal(peak, 2);
+  assert.equal(calls, 2, 'no automatic retry after one comparison failure');
+  assert.deepEqual(concurrent.attempts.map(a => a.attemptId), [7, 8], 'same-voice parallel calls get distinct reserved IDs');
+  assert.deepEqual(concurrent.attempts.map(a => a.status), ['error', 'ready']);
+  assert.ok(concurrent.attempts.every(a => a.execution === 'parallel'));
+  assert.deepEqual(concurrent.attempts[0].request, concurrent.attempts[1].request);
+  assert.equal((await listAttempts(dir)).length, 8);
   await writeFile(join(dir, 'reviews.json'), '{broken');
   await assert.rejects(() => markAttempt(dir, 1, 'bad'), SyntaxError);
   assert.equal(await readFile(path, 'utf8'), original);
