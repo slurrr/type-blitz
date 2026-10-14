@@ -1,5 +1,5 @@
 import { createCanvas } from '@napi-rs/canvas';
-import { EffectCell, FLAME_ROWS } from './typingEffects.js';
+import { EffectCell, FLAME_ROWS, burnPhases } from './typingEffects.js';
 
 export interface EffectBitmap { width: number; height: number; pixels: Buffer }
 export interface CellSize { width: number; height: number }
@@ -71,7 +71,9 @@ export class EffectPainter {
     for (const cell of visible.filter(cell => !cell.frozen)) {
       const x0 = cell.column * cw;
       const seed = cell.index * 23;
-      const stage = Math.min(3, Math.floor(cell.progress * 4));
+      const { flame } = burnPhases(cell.progress);
+      if (flame >= 1) continue; // The extended tail belongs to the glyph, not more flames.
+      const stage = Math.min(3, Math.floor(flame * 4));
       const sprite = FLAMES[(tick + cell.index) % FLAMES.length];
       const ignition = cell.age < 90 ? 0.5 : 1;
       const rows = Math.max(2, Math.round((13 - stage * 3) * ignition));
@@ -121,15 +123,28 @@ export class EffectPainter {
     for (const cell of visible) {
       const x0 = cell.column * cw;
       const mask = this.glyph(cell.char === ' ' ? '·' : cell.char, size);
-      const erosion = cell.progress < 0.18 ? -1 : (cell.progress - 0.18) / 0.82;
+      const { flame, crumble } = burnPhases(cell.progress);
+      // Keep a recognizable charred letter after the flame dies. Hold it for four
+      // sprite beats, then shed chunks slowly instead of finishing erosion in the fire.
+      const erosion = flame < 1 ? flame * 0.2 : 0.2 + Math.floor(crumble * 8) / 8 * 0.8;
       for (let y = 0; y < ch; y++) {
         for (let x = 0; x < cw; x++) {
           // Threshold the font mask: no antialiasing or blended colors in the effect layer.
           if (mask[(y * cw + x) * 4 + 3] < 96) continue;
           const gx = Math.floor(x / block), gy = Math.floor(y / block);
-          const threshold = gy * block / ch * 0.6 + hash(gx + gy * 17 + cell.index * 23) * 0.4;
-          if (!cell.frozen && threshold < erosion) continue;
-          const ink = cell.frozen ? ICE[4] : FIRE[threshold - erosion < 0.15 || cell.progress < 0.2 ? 6 : 4];
+          const threshold = 0.15 + hash(gx + gy * 17 + cell.index * 23) * 0.85;
+          if (!cell.frozen && threshold < erosion) {
+            // Detached pieces drop a few blocky steps, clipped to the text row.
+            if (crumble > 0 && erosion - threshold < 0.18) {
+              const drop = Math.ceil((erosion - threshold) / 0.06) * block;
+              rect(x0 + x, baseline + y + drop, 1, 1, FIRE[crumble < 0.5 ? 2 : 1]);
+            }
+            continue;
+          }
+          const emberInk = crumble > 0.65 ? 1 : crumble > 0.3 ? 2
+            : (Math.floor(tick / 2) + gx + gy + cell.index) % 3 === 0 ? 4 : 3;
+          const ink = cell.frozen ? ICE[4] : flame >= 1 ? FIRE[emberInk]
+            : FIRE[threshold - erosion < 0.15 || flame < 0.2 ? 6 : 4];
           rect(x0 + x, baseline + y, 1, 1, ink);
         }
       }

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
 import { GameEngine } from '../engine/gameEngine.js';
-import { TypingEffects, BURN_MS, FLAME_ROWS, renderEffectCharacter } from '../renderer/typingEffects.js';
+import { TypingEffects, BURN_MS, FLAME_MS, EMBER_MS, CRUMBLE_MS, FLAME_ROWS, burnPhases, renderEffectCharacter, renderTextFlames } from '../renderer/typingEffects.js';
 import { EffectPainter } from '../renderer/effectPixels.js';
 import { KittyEffects, encodeKittyBitmap, kittyGraphicsEnabled } from '../renderer/kittyEffects.js';
 import { renderStreamView } from '../renderer/streamView.js';
@@ -25,8 +25,9 @@ assert.equal(ignition.progress, 0);
 assert.equal(ignition.column, 38);
 assert.equal(ignition.frozen, false);
 assert.ok(effects.sample(engine, 80, 700)[0].progress > 0);
+assert.equal(stripAnsi(renderEffectCharacter(effects.sample(engine, 80, 1800)[0])), 'H', 'letter survives the end of the original flame duration');
 assert.equal(effects.sample(engine, 80, 100 + BURN_MS)[0].progress, 1);
-assert.equal(stripAnsi(renderEffectCharacter(effects.sample(engine, 80, 1800)[0])), ' ');
+assert.equal(stripAnsi(renderEffectCharacter(effects.sample(engine, 80, 100 + BURN_MS)[0])), ' ');
 
 // The entire error cascade freezes, including a key matching the expected letter.
 type('x', 1800); type('l', 1900);
@@ -73,9 +74,33 @@ assert.ok(ice.pixels[iceOffset + 2] > ice.pixels[iceOffset], 'ice has a cold blu
 assert.ok(ice.pixels[iceOffset + 3] > 200, 'ice remains solid, never burns out');
 assert.ok(painter.paint([], 12, size, 0).pixels.every(value => value === 0));
 
+// Flame -> ember hold -> slower crumble. The tail must not extend the flames.
+assert.equal(FLAME_MS, 1600);
+assert.equal(BURN_MS, FLAME_MS + EMBER_MS + CRUMBLE_MS);
+assert.deepEqual(burnPhases(FLAME_MS / BURN_MS), { flame: 1, crumble: 0 });
+assert.equal(burnPhases((FLAME_MS + EMBER_MS) / BURN_MS).flame, 1);
+assert.ok(burnPhases((FLAME_MS + EMBER_MS) / BURN_MS).crumble < 1e-12);
+assert.deepEqual(burnPhases(1), { flame: 1, crumble: 1 });
+const atAge = (age: number) => ({ ...burningCell, age, progress: age / BURN_MS });
+const ember = painter.paint([atAge(1700)], 12, size, 1700);
+const emberHeld = painter.paint([atAge(1880)], 12, size, 1880);
+const crumbling = painter.paint([atAge(3000)], 12, size, 3000);
+const alphaMask = (pixels: Buffer) => pixels.filter((_, index) => index % 4 === 3);
+const countPixels = (pixels: Buffer) => alphaMask(pixels).filter(alpha => alpha > 0).length;
+assert.deepEqual(alphaMask(ember.pixels), alphaMask(emberHeld.pixels), 'ember glyph holds its shape for several frames');
+assert.notDeepEqual(ember.pixels, emberHeld.pixels, 'embers flicker using flat palette inks');
+assert.ok(countPixels(ember.pixels) > 0, 'ember phase retains the letter');
+assert.ok(countPixels(crumbling.pixels) > 0 && countPixels(crumbling.pixels) < countPixels(ember.pixels), 'late crumble retains only a few chunks');
+for (const bitmap of [ember, emberHeld, crumbling]) {
+  assert.ok(bitmap.pixels.subarray(0, bitmap.width * FLAME_ROWS * size.height * 4).every(value => value === 0), 'no flames or rising sparks in the extended tail');
+}
+assert.equal(stripAnsi(renderEffectCharacter(atAge(1700))), 'H', 'ANSI fallback also holds the ember letter');
+assert.ok(renderTextFlames([atAge(1700)], 12, 1700).every(line => stripAnsi(line).trim() === ''), 'ANSI flames stop before the tail');
+assert.ok(painter.paint([atAge(BURN_MS)], 12, size, BURN_MS).pixels.every(value => value === 0));
+
 // Pixel-art contract: flat inks and opaque sprite pixels, never blended gradients/glow.
 const inks = new Set<string>();
-for (const image of [burning, ice]) {
+for (const image of [burning, ice, ember, emberHeld, crumbling]) {
   for (let offset = 0; offset < image.pixels.length; offset += 4) {
     const alpha = image.pixels[offset + 3];
     assert.ok(alpha === 0 || alpha === 255, 'effects have hard edges, not soft alpha');

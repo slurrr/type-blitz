@@ -78,7 +78,9 @@ npm run effects:demo
 The demo automatically burns a phrase, freezes a mistake cascade, backspaces it, and
 retypes it. Start typing to take over; `Ctrl+R` replays the demo; `Esc` exits.
 
-- **Burn:** about 1.6 seconds, accelerated near the left edge so fast typing cannot outrun it.
+- **Burn:** ~1.6 seconds of flames, a 0.36-second ember-letter hold, then a slower
+  1.4-second crumble (~3.36 seconds total). The tail flickers orange/red, sheds pixel
+  chunks, and cools to dark embers. Edge acceleration still finishes it before scrolling out.
 - **Style:** hand-pixelled flame cels, a six-color fire palette, square sparks and hard edges.
   Sprite poses step every 90 ms while the renderer updates at 30 FPS. Flames shrink in
   stages and letters break away in pixel chunks instead of dissolving into a smooth glow.
@@ -91,8 +93,9 @@ retypes it. Start typing to take over; `Ctrl+R` replays the demo; `Esc` exits.
   [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/), with one
   reusable image ID and no per-frame files or subprocesses. `kitten icat --print-window-size`
   measures cell pixels on entry/resize. No Kitty config changes or remote control required.
-- **Tuning:** `BURN_MS`, `FLAME_ROWS` and `EFFECT_FPS` live in
-  `src/renderer/typingEffects.ts`; visuals live in `src/renderer/effectPixels.ts`.
+- **Tuning:** `FLAME_MS`, `EMBER_MS`, `CRUMBLE_MS` (which sum to `BURN_MS`),
+  `FLAME_ROWS` and `EFFECT_FPS` live in `src/renderer/typingEffects.ts`;
+  visuals live in `src/renderer/effectPixels.ts`.
   `TYPE_BLITZ_EFFECT_FONT='Your Monospace Font'` changes the effect glyph font (default:
   system monospace; it does not automatically read Kitty's font settings).
 - **Fallback:** `TYPE_BLITZ_EFFECTS=ansi npm start` uses text flames and blue ice cells.
