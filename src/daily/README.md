@@ -197,16 +197,24 @@ format checks passed; factuality and naturalness still need human review.
 
 A separate `headlines-context.json` freezes **two stories**, discovered from the same
 public Reddit popular/hot feed rather than handpicked publishers. The writer gets
-linked publisher reporting plus a separately labeled discussion sample. Neither
-a title alone nor comments treated as facts is sufficient.
+linked publisher reporting plus a separately labeled discussion sample. Reporting
+supplies the situation; comments supply arguments, feelings and connections.
 
-One independent `headline-reaction` passage per story. No weather personas, national
-anchor script, compulsory joke, positive/negative pair, or predetermined emotional
-stance. `prompts/headlines/` asks for an actual opinion grounded in the story and
-one emotionally relevant everyday detail. It forbids invented evidence, victim
-testimony, quotations or treating comments as consensus. Hypothetical situations
-must not become claims about real people. Source attribution should be natural
-where needed, not input-bookkeeping narration.
+One independent `headline-reaction` passage per story. **Emotional recognition, not
+factual coverage, is the writing goal.** Assume the reader probably saw the headline;
+use a recognizable anchor, then spend the words on a human reaction. Opinions,
+inferred motives/outcomes, speculation, exaggeration, sarcasm and imagined personal
+preferences are welcome. Do not require evidence or reporter disclaimers for every
+inference. The user explicitly approved "cheaper diesel" as perceived consequence,
+not a factuality defect. These are expressive imagined speakers, not eyewitness
+accounts or quotations attributed to real people.
+
+`prompts/headlines/` asks for a specific thought that reveals a conviction, desire,
+contradiction or consequence the speaker cares about. Specificity needn't be a domestic
+prop. No weather personas, compulsory joke, balanced recap, positive/negative pair,
+or predetermined emotional stance. Source text remains context, never instructions.
+The collection's provenance/recency checks do not impose a factual-reporting style
+on the writing. No subreddit allowlist or discovery changes for this prompt iteration.
 
 **User-selected defaults for this iteration: Sol 6.1 / low.** These defaults apply
 only to the new headline command; old Reddit/weather behavior is unchanged.
