@@ -101,11 +101,13 @@ program.command('review')
   });
 
 program.command('compare')
-  .description('CONCURRENT thinking-level comparison using one exact archived prompt/input; generates new attempts')
-  .argument('<id>', 'source attempt ID')
+  .description('CONCURRENT comparison of each archived prompt at each thinking level; generates new attempts')
+  .argument('<ids>', 'source attempt IDs, e.g. 001 or 001,002,003')
   .requiredOption('--model <id>', 'physical openai-codex model')
   .option('--thinking <levels>', 'distinct comma-separated levels', 'low,xhigh')
-  .action(async (id: string, options) => {
+  .action(async (idsText: string, options) => {
+    const ids = idsText.split(',').map(parseId);
+    if (new Set(ids).size !== ids.length) throw new Error('Duplicate source IDs would create accidental extra calls.');
     const levels = String(options.thinking).split(',');
     if (levels.length < 2 || new Set(levels).size !== levels.length ||
         levels.some(level => !THINKING_LEVELS.includes(level as ThinkingLevel))) {
@@ -114,11 +116,12 @@ program.command('compare')
     const { dir } = program.opts();
     await withPreviewLock(dir, async () => {
       const preparationStart = performance.now();
-      const seed = seedFromAttempt(await getAttempt(dir, parseId(id)));
+      const seeds = await Promise.all(ids.map(async id => seedFromAttempt(await getAttempt(dir, id))));
       const writers = await Promise.all(levels.map(level => createPiWriter(options.model, level as ThinkingLevel)));
       const reviews = await readReviews(dir);
-      console.log(`Comparing ${levels.join(' / ')} CONCURRENTLY on exact prompt/input from #${id}. No Reddit requests.`);
-      const batch = await generateParallel(dir, seed, writers, attempt => console.log(formatAttempt(attempt, reviews)));
+      const jobs = seeds.flatMap(seed => writers.map(writer => ({ seed, writer })));
+      console.log(`Comparing ${levels.join(' / ')} CONCURRENTLY on archived prompts ${ids.join(', ')}: ${jobs.length} calls. No Reddit requests.`);
+      const batch = await generateParallel(dir, jobs, attempt => console.log(formatAttempt(attempt, reviews)));
       console.log(`\nComparison wall time: ${(batch.wallMs / 1000).toFixed(2)} s; with preparation: ${((performance.now() - preparationStart) / 1000).toFixed(2)} s.`);
       if (batch.attempts.some(a => a.status !== 'ready')) process.exitCode = 1;
     });

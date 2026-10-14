@@ -138,13 +138,13 @@ export async function generateAttempt(directory: string, seed: GenerationSeed, w
 
 /** Explicit concurrent comparison; settle all writes before the caller releases the directory lock. */
 export async function generateParallel(
-  directory: string, seed: GenerationSeed, writers: Writer[], onAttempt: (attempt: Attempt) => void = () => {}
+  directory: string, jobs: { seed: GenerationSeed; writer: Writer }[], onAttempt: (attempt: Attempt) => void = () => {}
 ): Promise<{ attempts: Attempt[]; wallMs: number }> {
   const start = performance.now();
   const pending: Attempt[] = [];
-  for (const writer of writers) pending.push(await reserveAttempt(directory, seed, writer, 'parallel'));
+  for (const { seed, writer } of jobs) pending.push(await reserveAttempt(directory, seed, writer, 'parallel'));
   const results = await Promise.allSettled(pending.map(async (attempt, index) => {
-    const completed = await completeAttempt(directory, attempt, writers[index]);
+    const completed = await completeAttempt(directory, attempt, jobs[index].writer);
     onAttempt(completed);
     return completed;
   }));

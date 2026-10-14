@@ -115,14 +115,16 @@ try {
   let active = 0;
   let peak = 0;
   let calls = 0;
+  let release!: () => void;
+  const allStarted = new Promise<void>(resolve => { release = resolve; });
   const concurrentWriters: Writer[] = (['low', 'xhigh'] as const).map(thinking => ({
     ...fake, thinking,
     async generate(request) {
       calls++;
       active++;
       peak = Math.max(peak, active);
-      assert.equal((await listAttempts(dir)).filter(a => a.status === 'pending').length, 2, 'reserve all IDs before making calls');
-      await new Promise(resolve => setTimeout(resolve, 10));
+      if (calls === 4) release();
+      await allStarted;
       active--;
       if (thinking === 'low') throw new Error('one writer failed');
       return { text: prose, model: fake.model, thinking,
@@ -130,14 +132,27 @@ try {
           tools: [], messageRoles: ['user'], payloadVerified: true } };
     }
   }));
-  const concurrent = await withPreviewLock(dir, () => generateParallel(dir, seed, concurrentWriters));
-  assert.equal(peak, 2);
-  assert.equal(calls, 2, 'no automatic retry after one comparison failure');
-  assert.deepEqual(concurrent.attempts.map(a => a.attemptId), [7, 8], 'same-voice parallel calls get distinct reserved IDs');
-  assert.deepEqual(concurrent.attempts.map(a => a.status), ['error', 'ready']);
+  const otherSeed = await seedFromPacket(packet, 'blogger');
+  const jobs = [seed, otherSeed].flatMap(input => concurrentWriters.map(writer => ({
+    seed: input,
+    writer: { ...writer, async generate(request: typeof seed.request) {
+      assert.deepEqual(request, input.request, 'each effort gets the correct voice prompt');
+      const reserved = await listAttempts(dir);
+      assert.deepEqual(reserved.slice(-4).map(a => a.attemptId), [7, 8, 9, 10], 'reserve the entire matrix before calls');
+      return writer.generate(request);
+    } }
+  })));
+  const concurrent = await withPreviewLock(dir, () => generateParallel(dir, jobs));
+  assert.equal(peak, 4);
+  assert.equal(calls, 4, 'no automatic retry after comparison failures');
+  assert.deepEqual(concurrent.attempts.map(a => a.attemptId), [7, 8, 9, 10], 'matrix calls get distinct reserved IDs');
+  assert.deepEqual(concurrent.attempts.map(a => a.voice), ['student', 'student', 'blogger', 'blogger']);
+  assert.deepEqual(concurrent.attempts.map(a => a.status), ['error', 'ready', 'error', 'ready']);
   assert.ok(concurrent.attempts.every(a => a.execution === 'parallel'));
   assert.deepEqual(concurrent.attempts[0].request, concurrent.attempts[1].request);
-  assert.equal((await listAttempts(dir)).length, 8);
+  assert.deepEqual(concurrent.attempts[2].request, concurrent.attempts[3].request);
+  assert.notDeepEqual(concurrent.attempts[0].request, concurrent.attempts[2].request);
+  assert.equal((await listAttempts(dir)).length, 10);
   await writeFile(join(dir, 'reviews.json'), '{broken');
   await assert.rejects(() => markAttempt(dir, 1, 'bad'), SyntaxError);
   assert.equal(await readFile(path, 'utf8'), original);

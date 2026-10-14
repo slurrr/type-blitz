@@ -44,6 +44,8 @@ npm run daily:preview -- generate --from 001 --model gpt-5.6-luna --thinking hig
 
 # Explicit concurrent low-vs-xhigh comparison, one voice and the SAME archived input.
 npm run daily:preview -- compare 001 --model gpt-6-astra --thinking low,xhigh
+# Full three-voice matrix: 3 archived prompts x 2 efforts = 6 concurrent calls.
+npm run daily:preview -- compare 001,002,003 --model gpt-6-astra --thinking low,xhigh
 
 # Only when you actually want a new topic:
 npm run daily:preview -- collect --refresh
@@ -65,8 +67,10 @@ payload, not silently mapped to low. Unsupported effort/model requests fail; the
 is no fallback or automatic retry. Each call times out after five minutes.
 
 The normal `generate` command is **sequential** for easier per-call timing comparisons.
-`compare ID --model MODEL --thinking low,xhigh` is explicitly **concurrent**: one call
-per requested effort, using the same archived voice prompt/source. IDs are reserved
+`compare IDS --model MODEL --thinking low,xhigh` is explicitly **concurrent**: one call
+per archived prompt x requested effort, with the exact saved instructions/source for
+each voice. Pass comma-separated IDs; duplicates are rejected before any calls. To
+fill an incomplete comparison, specify only the missing voices. IDs are reserved
 serially before calls start, and all calls/writes settle before releasing the lock.
 One failed model response does not discard the other result. Execution mode is recorded.
 Output reports individual request duration, batch wall time, and wall time
