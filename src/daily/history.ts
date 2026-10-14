@@ -3,7 +3,7 @@ import { link, mkdir, open, readFile, readdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { buildRequest, formatSample, preparePassage, readJson, saveJson, sourceId } from './preview.js';
 import { cleanText } from './reddit.js';
-import { RATINGS, VOICES, type Attempt, type PreviewSample, type Rating, type Reviews, type SourcePacket, type VoiceId, type Writer, type WriterRequest } from './types.js';
+import { ALL_VOICES, RATINGS, VOICES, type Attempt, type PreviewSample, type Rating, type Reviews, type SourcePacket, type VoiceId, type Writer, type WriterRequest } from './types.js';
 
 export function promptId(request: WriterRequest): string {
   return createHash('sha256').update(request.systemPrompt).digest('hex');
@@ -11,7 +11,7 @@ export function promptId(request: WriterRequest): string {
 export function attemptName(id: number, voice: VoiceId): string {
   return String(id).padStart(3, '0') + '-' + voice;
 }
-const filePattern = /^(\d{3,})-(student|blogger|satirist)(\.pending)?\.json$/;
+const filePattern = new RegExp('^(\\d{3,})-(' + Object.keys(ALL_VOICES).join('|') + ')(\\.pending)?\\.json$');
 
 /** Atomically publish a complete read-only record, refusing to replace any existing path. */
 export async function writeOnce(path: string, value: unknown): Promise<void> {
@@ -99,7 +99,7 @@ async function reserveAttempt(
   await mkdir(join(directory, 'attempts'), { recursive: true });
   const id = await nextId(directory);
   const attempt: Attempt = {
-    version: 1, attemptId: id, voice: seed.voice, label: VOICES[seed.voice],
+    version: 1, attemptId: id, voice: seed.voice, label: ALL_VOICES[seed.voice],
     sourceId: seed.sourceId, source: structuredClone(seed.source), promptId: promptId(seed.request),
     request: structuredClone(seed.request), replayOf: seed.replayOf, execution,
     createdAt: new Date().toISOString(), model: writer.model, thinking: writer.thinking, status: 'pending'
@@ -119,7 +119,8 @@ async function completeAttempt(directory: string, attempt: Attempt, writer: Writ
     const { text, warnings } = preparePassage(attempt.result.text);
     attempt.passage = {
       id: `daily-${attempt.attemptId}-${attempt.sourceId.slice(0, 12)}-${attempt.voice}`,
-      title: attempt.source.title, author: VOICES[attempt.voice], year: attempt.source.year, genre: 'Daily AI / Reddit', text
+      title: attempt.source.title, author: ALL_VOICES[attempt.voice], year: attempt.source.year,
+      genre: 'Daily AI / ' + (attempt.source.kind === 'weather' ? 'Weather' : attempt.source.kind === 'headlines' ? 'Headlines' : 'Reddit'), text
     };
     attempt.warnings = warnings;
     attempt.status = 'ready';

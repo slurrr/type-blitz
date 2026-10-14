@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildRequest, sourceId, withPreviewLock } from '../daily/preview.js';
 import { attemptName, formatTable, generateAttempt, generateParallel, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket, summarizePrompts, writeOnce } from '../daily/history.js';
-import { VOICES, type PreviewSample, type SourcePacket, type VoiceId, type Writer } from '../daily/types.js';
+import { VOICES, type PreviewSample, type SourcePacket, type Writer } from '../daily/types.js';
 import { comparisonVariants } from '../daily/variants.js';
 
 assert.deepEqual(comparisonVariants({ model: 'gpt-6-astra' }), [
@@ -35,7 +35,7 @@ const prose = 'There is something wonderfully stubborn about fixing a toaster in
 const dir = await mkdtemp(join(tmpdir(), 'type-blitz-history-test-'));
 try {
   const originals = new Map<string, string>();
-  for (const voice of Object.keys(VOICES) as VoiceId[]) {
+  for (const voice of Object.keys(VOICES) as (keyof typeof VOICES)[]) {
     const sample: PreviewSample = {
       version: 1, voice, label: VOICES[voice], sourceId: sourceId(packet), createdAt: packet.fetchedAt,
       model: 'openai-codex/fixture', thinking: 'xhigh', status: 'ready', elapsedMs: 100,

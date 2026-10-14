@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto';
 import { mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cleanText } from './reddit.js';
-import { type PreviewSample, type SourcePacket, type VoiceId, type WriterRequest } from './types.js';
+import { VOICES, type PreviewSample, type SourcePacket, type VoiceId, type WriterRequest } from './types.js';
 
-export function sourceId(packet: SourcePacket): string {
+export function sourceId(packet: unknown): string {
   return createHash('sha256').update(JSON.stringify(packet)).digest('hex');
 }
 export async function saveJson(path: string, value: unknown): Promise<void> {
@@ -63,6 +63,7 @@ export async function collectOnce(
 }
 
 export async function buildRequest(packet: SourcePacket, voice: VoiceId): Promise<WriterRequest> {
+  if (!Object.hasOwn(VOICES, voice)) throw new Error('Choose a Reddit voice: student, blogger or satirist.');
   const directory = new URL('../../prompts/daily/', import.meta.url);
   const shared = await readFile(new URL('shared.md', directory), 'utf8');
   const specific = await readFile(new URL(voice + '.md', directory), 'utf8');

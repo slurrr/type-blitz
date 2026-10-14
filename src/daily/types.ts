@@ -35,7 +35,14 @@ export const VOICES = {
   blogger: 'Earnest mommy blogger',
   satirist: 'Dry satirical observer'
 } as const;
-export type VoiceId = keyof typeof VOICES;
+// Keep Reddit's existing three-voice default unchanged.
+export const WEATHER_VOICES = {
+  ...VOICES,
+  weatherman: 'Local weather anchor',
+  'weather-friend': 'Relatable weather observer'
+} as const;
+export const ALL_VOICES = WEATHER_VOICES;
+export type VoiceId = keyof typeof ALL_VOICES;
 
 export const THINKING_LEVELS = ['off', 'low', 'medium', 'high', 'xhigh'] as const;
 export type ThinkingLevel = typeof THINKING_LEVELS[number];
@@ -76,7 +83,7 @@ export type Reviews = Record<string, Review>;
 export interface Attempt extends PreviewSample {
   attemptId: number;
   promptId: string;
-  source: { title: string; year: number };
+  source: { title: string; year: number; kind?: 'reddit' | 'weather' | 'headlines' };
   execution: 'sequential' | 'parallel' | 'unknown';
   replayOf?: number;
   importedFrom?: { file: string; sha256: string };

@@ -1,7 +1,12 @@
 # Daily passage voice experiment
 
 Standalone; nothing here is imported by the game. First prove the writing, then
-integrate it. No daily scheduler/cache policy, weather collector or new menu yet.
+integrate it. Reddit voice experiments and Helena weather previews share immutable
+history, but have separate inputs and prompt instructions. No scheduler or new game menu.
+
+The completed model-selection reading view is
+`~/runs/type-blitz/daily-preview/model-comparison.md` (all models/efforts/voices,
+ratings and timing caveats). It replaces the Sol-only doc; underlying evidence is retained.
 
 ## Try it
 
@@ -88,6 +93,79 @@ should be parallel for low wall-clock latency; the game is not integrated here.
 Token counts describe subscription usage, not a dollar invoice; output counts may
 include reasoning. Single runs are observations, not controlled performance benchmarks.
 
+## Weather experiments
+
+No model is selected by this extension. Weather generation **requires explicit
+`--model` and `--thinking`**; `--dry-run` requires neither and never loads credentials
+or creates attempts. The old Reddit generation defaults are unchanged.
+
+```sh
+# Public NWS: one points lookup + one forecast fetch for Helena, Montana.
+# Reuses the frozen forecast thereafter; --refresh is explicit. No model calls.
+npm run daily:preview -- weather collect
+npm run daily:preview -- weather show
+
+# Optional user-described conditions, separately attributed and dated.
+# Works without a forecast; enables feel mode, NOT factual forecast modes.
+npm run daily:preview -- weather note "It snowed, now it is melting, and it still feels cold."
+
+# Inspect exact prompts/input before spending a call.
+npm run daily:preview -- weather generate weatherman --mode today --dry-run
+npm run daily:preview -- weather generate weatherman --mode extended --dry-run
+npm run daily:preview -- weather generate weather-friend --mode feel --dry-run
+npm run daily:preview -- weather generate all --mode feel --dry-run
+
+# After choosing MODEL and EFFORT, replace dry-run with explicit settings.
+npm run daily:preview -- weather generate weatherman --mode today --model "$MODEL" --thinking "$EFFORT"
+npm run daily:preview -- weather generate weather-friend --mode feel --model "$MODEL" --thinking "$EFFORT"
+# all = FIVE calls, sequential unless --parallel is explicitly supplied.
+npm run daily:preview -- weather generate all --mode feel --model "$MODEL" --thinking "$EFFORT" --parallel
+```
+
+Modes and voices are independent:
+- **today**: remaining forecast periods for the location's day, including an ongoing
+  overnight period. Date boundaries use America/Denver, not the machine's timezone.
+- **extended**: next six available periods starting after that local day (normally
+  three days), not a repetition of today's forecast.
+- **feel**: relatable commentary grounded in forecast and/or user-reported conditions.
+  Cold, melting snow and small everyday frustrations can supply recognition or a
+  chuckle; no compulsory joke or invented prediction.
+- **weatherman**: deliberately generic, clear, friendly local weather anchor.
+- **weather-friend**: warm, wry local observer.
+- Existing **student / blogger / satirist** voice files can also be tried unchanged.
+  They get weather grounding instructions, not Reddit's post/comment guidance.
+
+All prompts live under `prompts/weather/`; existing Reddit prompts remain untouched.
+Task/voice/format are composed separately. Location comes first, and the target
+remains one 45–60-word paragraph. These are prompt instructions, not an automated
+factuality guarantee: inspect the output against the input before approving it.
+
+`weather-context.json` is separate from Reddit's `context.json`. It records location,
+timezone, forecast provider/URL/issued time, temperatures and units, precipitation
+chances (unknown stays unknown, not zero), wind and period boundaries. User reports
+are explicitly anecdotal, not weather-station observations. Adding a report creates
+a new context snapshot but does not change the forecast's issue time. Forecast
+refresh retains dated reports; stale reports must not be described as current.
+No station observations, weather alerts, historical snowfall or road reports are
+collected. A forecast is a prediction, not measured current conditions.
+
+Collection is bounded to two public requests, no credentials, redirects or retries.
+Failure preserves the prior packet. Generation never fetches or silently refreshes;
+the model writes for the frozen as-of time. Today/extended require applicable forecast
+periods; a report-only packet can run feel mode. Refresh explicitly when real freshness
+is needed, rather than comparing different sources accidentally.
+
+Weather results join the same numbered history, ratings and `list/show/review`.
+Use `show ID --input` or `--prompt` for evidence. Existing `generate --from ID`
+and `compare ID --model ... --thinking ...` replay weather requests exactly, even
+after current weather or prompt files change. Genre/source metadata distinguish
+weather from legacy Reddit records without rewriting old files.
+
+Future headline collection can feed the same `GenerationSeed` boundary (kind, title,
+year, source fingerprint, voice and exact request); it need not pretend to be Reddit
+or use weather prompts. **A dedicated headline collector/command is not implemented
+yet**; this iteration starts with weather only.
+
 ## Immutable history and marks
 
 Default directory: `~/runs/type-blitz/daily-preview/`. Override with `--dir <path>`
@@ -153,6 +231,8 @@ legacy files are never written again by the new CLI. No credentials are archived
 - `history.ts`: immutable attempts, migration, exact replay, sequential generation,
   explicit parallel comparisons, and reviews.
 - `variants.ts`: validates single-model or mixed-model comparison settings before calls.
+- `weather.ts`: typed weather source, NWS collector, reports, forecast selection and prompt seeds.
+- `weatherCli.ts`: weather collect/note/show/generate; model selection is explicit.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
   A request contains shared + only its voice. No other voice's instructions/results.
@@ -192,8 +272,10 @@ collection. This browser transport is a local prototype, not server-ready access
 `npm run build && npm test` covers extraction, tab ownership/readiness/cleanup, input
 reuse, prompt isolation, exact reasoning selection (including off), sequential calls,
 immutable publication, migration, review filters, exact replay, same-voice concurrent
-ID reservation/failure isolation, and interruption/failure
-retention. Fixtures/fake transports only: tests never call Reddit or an LLM.
+ID reservation/failure isolation, and interruption/failure retention. Weather tests
+cover public-request boundaries, source attribution, local-date selection, missing
+forecast rejection, five isolated voices, dry-run CLI, and immutable weather replay.
+Fixtures/fake transports only: tests never call Reddit, NWS or an LLM.
 
 The eventual first menu entry is exactly `QUICK PLAY (DAILY GEN AI)`: Helena today +
 extended weather, two news stories and two buzz topics, with varied voices. Weather

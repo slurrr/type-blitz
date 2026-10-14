@@ -135,7 +135,9 @@ the main menu; `l` does nothing on high scores, where there is no forward destin
 
 A standalone writing preview—no game/menu changes yet. Freeze one Reddit discussion,
 then compare three independent voices using Pi's existing OpenAI/Codex login.
-Defaults to **Luna 5.6 / xhigh**. Model calls have no coding-agent prompt or tools.
+Reddit defaults to **Luna 5.6 / xhigh**. Model calls have no coding-agent prompt or tools.
+Weather experiments support a generic local anchor, relatable commentary, and the
+existing voices. Weather generation requires an explicit model/effort selection.
 
 ```bash
 npm run daily:preview -- collect       # Reuses saved input; no repeated scraping
@@ -145,12 +147,17 @@ npm run daily:preview -- show 001 --prompt  # Exact historical passage and promp
 npm run daily:preview -- mark 001 good # Quality: good / mid / bad
 npm run daily:preview -- list --by-prompt # Quality counts by prompt/model/thinking
 npm run daily:preview -- generate --from 001 --thinking off  # Exact-input comparison
+npm run daily:preview -- weather collect  # Freeze Helena NWS forecast; no model call
+npm run daily:preview -- weather generate weatherman --mode today --dry-run
+npm run daily:preview -- weather generate weather-friend --mode feel --dry-run
 ```
 
 Edit `prompts/daily/{student,blogger,satirist}.md` to change voices. Numbered, immutable
 attempts and separate quality ratings live in `~/runs/type-blitz/daily-preview/`, not
 Git. No replacement/deletion of earlier attempts. See [the prototype guide](src/daily/README.md)
-for model/thinking options, extraction limits, isolation, and the future daily mode.
+for model/thinking options, weather experiments, extraction limits, isolation, and the
+future daily mode. The complete model-selection reading view is
+`~/runs/type-blitz/daily-preview/model-comparison.md`.
 
 ## Browser terminal integration
 

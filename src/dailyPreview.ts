@@ -7,6 +7,7 @@ import { collectOnce, formatPacket, readPacket, sourceId, withPreviewLock } from
 import { formatAttempt, formatPromptTable, formatTable, generateParallel, generateSequential, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket } from './daily/history.js';
 import { RATINGS, THINKING_LEVELS, VOICES, type Rating, type VoiceId } from './daily/types.js';
 import { comparisonVariants } from './daily/variants.js';
+import { registerWeather } from './daily/weatherCli.js';
 
 const program = new Command()
   .name('daily-preview')
@@ -156,6 +157,8 @@ program.command('generate')
       if (batch.attempts.some(a => a.status !== 'ready')) process.exitCode = 1;
     });
   });
+
+registerWeather(program);
 
 program.parseAsync().catch(error => {
   console.error(error instanceof Error ? error.message : String(error));
