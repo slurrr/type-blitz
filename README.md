@@ -28,7 +28,7 @@
    - **The active word & character always stay locked in the center!**
 4. **Fire & Ice Typing Effects**:
    - Correct letters ignite, erode into embers, and disappear while the stream keeps its spacing.
-   - In Kitty, real pixel flames rise into three rows above the text at 30 FPS.
+   - In Kitty, chunky arcade flame sprites and square embers rise above the text—flat neon colors, no realistic glow.
    - Mistakes become cracked blue ice blocks. The whole error cascade stays frozen until you `Backspace` past the mistake.
 5. **Classic Literature Database**:
    - Passages from *Moby-Dick*, *1984*, *Pride and Prejudice*, *The Great Gatsby*, *Frankenstein*, *Alice's Adventures in Wonderland*, *The Metamorphosis*, *Dracula*, *Dune*, *Fahrenheit 451*, and more.
@@ -79,11 +79,15 @@ The demo automatically burns a phrase, freezes a mistake cascade, backspaces it,
 retypes it. Start typing to take over; `Ctrl+R` replays the demo; `Esc` exits.
 
 - **Burn:** about 1.6 seconds, accelerated near the left edge so fast typing cannot outrun it.
-- **Ice:** translucent bevels, facets, cracks and a brief frost burst. It persists until erased.
+- **Style:** hand-pixelled flame cels, a six-color fire palette, square sparks and hard edges.
+  Sprite poses step every 90 ms while the renderer updates at 30 FPS. Flames shrink in
+  stages and letters break away in pixel chunks instead of dissolving into a smooth glow.
+- **Ice:** flat blue arcade tiles with chunky bevels, stepped cracks and a brief square-pixel
+  frost burst. They persist until erased.
 - **Layout:** flames stay behind the cursor; upcoming text remains native terminal text.
   Burned characters keep their space, and backspacing restores untyped passage text.
 - **Implementation:** `@napi-rs/canvas` rasterizes glyph masks; the renderer erodes those
-  masks and draws procedural flames/ice. Compressed RGBA goes directly through the
+  masks and draws hard-edged flame sprites/ice tiles. Compressed RGBA goes directly through the
   [Kitty graphics protocol](https://sw.kovidgoyal.net/kitty/graphics-protocol/), with one
   reusable image ID and no per-frame files or subprocesses. `kitten icat --print-window-size`
   measures cell pixels on entry/resize. No Kitty config changes or remote control required.

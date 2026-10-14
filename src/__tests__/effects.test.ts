@@ -73,6 +73,36 @@ assert.ok(ice.pixels[iceOffset + 2] > ice.pixels[iceOffset], 'ice has a cold blu
 assert.ok(ice.pixels[iceOffset + 3] > 200, 'ice remains solid, never burns out');
 assert.ok(painter.paint([], 12, size, 0).pixels.every(value => value === 0));
 
+// Pixel-art contract: flat inks and opaque sprite pixels, never blended gradients/glow.
+const inks = new Set<string>();
+for (const image of [burning, ice]) {
+  for (let offset = 0; offset < image.pixels.length; offset += 4) {
+    const alpha = image.pixels[offset + 3];
+    assert.ok(alpha === 0 || alpha === 255, 'effects have hard edges, not soft alpha');
+    if (alpha) inks.add(image.pixels.subarray(offset, offset + 3).toString('hex'));
+  }
+}
+assert.ok(inks.size <= 11, 'fire and ice share a small fixed arcade palette');
+assert.deepEqual(painter.paint([burningCell], 12, size, 410).pixels, burning.pixels,
+  'sprite cels hold for a beat rather than smoothly morphing');
+// At this cell size, every flame/spark pixel is a solid 3x3 square.
+for (let y = 0; y < FLAME_ROWS * size.height; y += 3) {
+  for (let x = 0; x < burning.width; x += 3) {
+    const origin: number = (y * burning.width + x) * 4;
+    for (let dy = 0; dy < 3; dy++) for (let dx = 0; dx < 3; dx++) {
+      const offset: number = ((y + dy) * burning.width + x + dx) * 4;
+      assert.deepEqual(burning.pixels.subarray(offset, offset + 4), burning.pixels.subarray(origin, origin + 4));
+    }
+  }
+}
+const neighbor = { ...burningCell, column: burningCell.column - 1, index: 20 };
+const together = painter.paint([{ ...burningCell, frozen: true, age: 8000 }, neighbor], 12, size, 8000);
+for (let y = FLAME_ROWS * size.height; y < ice.height; y++) {
+  const offset = (y * ice.width + burningCell.column * size.width) * 4;
+  assert.deepEqual(together.pixels.subarray(offset, offset + size.width * 4), ice.pixels.subarray(offset, offset + size.width * 4),
+    'neighboring fire cannot overwrite an ice block or its glyph');
+}
+
 // Protocol round trip with incompressible data forces multiple 4096-byte chunks.
 const bitmap = { width: 96, height: 48, pixels: randomBytes(96 * 48 * 4) };
 const encoded = encodeKittyBitmap(bitmap, 12345);
