@@ -35,7 +35,7 @@ export function registerWeather(program: Command): void {
     });
   weather.command('generate')
     .description('Generate one weather passage per voice/model variant; defaults to sequential, never fetches weather')
-    .argument('[voice]', 'forecast-negative, forecast-positive, reaction-negative, reaction-positive, or all (four voices)', 'forecast-positive')
+    .argument('[voice]', 'forecast-negative, forecast-neutral, forecast-positive, reaction-negative, reaction-positive, or all (five voices)', 'forecast-neutral')
     .addOption(new Option('--mode <mode>', 'auto selects today for presenters and feel for reactions').choices(['auto', ...WEATHER_MODES]).default('auto'))
     .option('--model <id>', 'single physical openai-codex model; pair with --thinking')
     .addOption(new Option('--thinking <level>', 'explicit effort for --model; use --variant for a matrix').choices([...THINKING_LEVELS]))

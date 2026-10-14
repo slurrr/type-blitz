@@ -9,11 +9,11 @@ export const WEATHER_MODES = ['today', 'extended', 'feel'] as const;
 export type WeatherMode = typeof WEATHER_MODES[number];
 export type WeatherSelection = WeatherMode | 'auto';
 export function resolveWeatherMode(voice: VoiceId, mode: WeatherSelection = 'auto'): WeatherMode {
-  if (!Object.hasOwn(WEATHER_VOICES, voice)) throw new Error('Choose one of the four active weather voices; legacy voices are replay-only.');
+  if (!Object.hasOwn(WEATHER_VOICES, voice)) throw new Error('Choose an active weather voice; legacy voices are replay-only.');
   const reaction = voice.startsWith('reaction-');
   if (mode === 'auto') return reaction ? 'feel' : 'today';
   if (!WEATHER_MODES.includes(mode) || (reaction ? mode !== 'feel' : mode === 'feel')) {
-    throw new Error('Forecast voices require today/extended; reaction voices require feel. Use auto for all four.');
+    throw new Error('Forecast voices require today/extended; reaction voices require feel. Use auto for the full voice set.');
   }
   return mode;
 }

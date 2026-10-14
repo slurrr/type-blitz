@@ -95,13 +95,14 @@ include reasoning. Single runs are observations, not controlled performance benc
 
 ## Weather experiments
 
-Exactly four active weather voices. No student, blogger, satirist, or old weather
+Exactly five active weather voices. No student, blogger, satirist, or old weather
 personality is included in new weather generation.
 
 | Voice | Job |
 |---|---|
 | `forecast-negative` | Nasty, foul-mouthed **local** weatherman delivering an actual forecast |
-| `forecast-positive` | Calm, confident, reassuring **local** weatherman delivering an actual forecast |
+| `forecast-neutral` | Calm, confident, reassuring **local** weatherman delivering an actual forecast |
+| `forecast-positive` | Optimistic **local** weatherman with a revealing personal reason or aside, not generic hype |
 | `reaction-negative` | A person complaining about dealing with the weather |
 | `reaction-positive` | A person delighting in their response to the weather |
 
@@ -109,16 +110,19 @@ The two jobs have different prompts **and different input projections**:
 - Presenters receive official forecast periods, location and as-of time. They mention
   Helena/Montana naturally, without any required opening or city/state announcement.
   No user-report scaffolding is included. Forecast values remain predictions.
-  Positive forecasts reassure through clear expectations, not hype or denial of risk.
+  Neutral forecasts reassure through clear expectations. Positive forecasts add a
+  particular preference/plan that makes the presenter oddly cheerful; neither denies risk.
 - Reactions receive only a weather situation: same-local-day user-described conditions,
   or the first applicable period's short description when no current report exists.
   No location, forecast numbers, provider labels or timestamps are injected into this
   input. They should not name a place, recite a forecast, or mention reports/sources.
   First-person feelings and profanity are allowed; this is not weather advice.
   One concrete personal intention/choice and why it matters should carry the emotion,
-  without prescribing activities for particular conditions. No invented backstory.
+  without prescribing activities for particular conditions. Add one telling detail of
+  taste or intention, not a generic category or a decorative proper noun. Mundane
+  fictional preferences/plans are allowed; invented biography or weather facts are not.
 
-Both polarities receive identical input within their job. Across models, the exact
+All three presenters receive identical input; both reactions receive identical input. Across models, the exact
 request for each voice is identical. The full frozen packet remains separate evidence;
 the archived request records exactly the projection that was sent. Earlier records
 retain their old prompts/input and remain readable/replayable, not silently upgraded.
@@ -144,10 +148,10 @@ npm run daily:preview -- weather generate forecast-positive --mode extended --dr
 # One call, after choosing MODEL and EFFORT.
 npm run daily:preview -- weather generate reaction-negative --model "$MODEL" --thinking "$EFFORT"
 
-# Current prompt-iteration model: Astra 6 low only, FOUR new calls.
+# Current prompt-iteration model: Astra 6 low only, FIVE new calls.
 npm run daily:preview -- weather generate all --parallel --model gpt-6-astra --thinking low
 
-# Optional multi-model comparison: TWELVE new calls, not a read-only report.
+# Optional multi-model comparison: FIFTEEN new calls, not a read-only report.
 # Add --dry-run to inspect without generating.
 npm run daily:preview -- weather generate all --parallel \
   --variant gpt-6.1-sol:low --variant gpt-6-astra:low --variant gpt-5.6-luna:off
@@ -156,7 +160,7 @@ npm run daily:preview -- weather generate all --parallel \
 `--mode auto` routes each voice to its own job. Explicit `today` / `extended` are
 only valid for presenters; `feel` only for reactions. Incompatible combinations fail
 before model setup. `all --mode feel` is intentionally invalid; it would turn the
-weathermen into commentators again. Default single voice: `forecast-positive`.
+weathermen into commentators again. Default single voice: `forecast-neutral`.
 Runs are sequential unless `--parallel` is explicit.
 
 Today selects remaining periods of the location's day, including an ongoing overnight
@@ -296,7 +300,7 @@ reuse, prompt isolation, exact reasoning selection (including off), sequential c
 immutable publication, migration, review filters, exact replay, same-voice concurrent
 ID reservation/failure isolation, and interruption/failure retention. Weather tests
 cover public-request boundaries, source attribution, local-date selection, missing
-forecast rejection, four isolated roles, role-specific input projection, rejected mode/voice
+forecast rejection, five isolated roles, role-specific input projection, rejected mode/voice
 combinations, dry-run matrix validation, and immutable legacy/current weather replay.
 Fixtures/fake transports only: tests never call Reddit, NWS or an LLM.
 

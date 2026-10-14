@@ -90,12 +90,13 @@ try {
   const before = await readFile(join(directory, 'weather-context.json'), 'utf8');
   await assert.rejects(() => withPreviewLock(directory, () => collectWeatherOnce(directory, true, async () => { throw new Error('offline'); })), /offline/);
   assert.equal(await readFile(join(directory, 'weather-context.json'), 'utf8'), before, 'failed refresh keeps frozen evidence');
-  assert.deepEqual(Object.keys(WEATHER_VOICES), ['forecast-negative', 'forecast-positive', 'reaction-negative', 'reaction-positive']);
+  assert.deepEqual(Object.keys(WEATHER_VOICES), ['forecast-negative', 'forecast-neutral', 'forecast-positive', 'reaction-negative', 'reaction-positive']);
   const prompts = await Promise.all((Object.keys(WEATHER_VOICES) as VoiceId[]).map(v => buildWeatherRequest(frozen, v)));
   assert.equal(new Set(prompts.map(p => p.userPrompt)).size, 2, 'presenters get a forecast; reactions get only the scene');
-  assert.equal(new Set(prompts.map(p => p.systemPrompt)).size, 4);
+  assert.equal(new Set(prompts.map(p => p.systemPrompt)).size, 5);
   assert.equal(prompts[0].userPrompt, prompts[1].userPrompt);
-  assert.equal(prompts[2].userPrompt, prompts[3].userPrompt);
+  assert.equal(prompts[1].userPrompt, prompts[2].userPrompt);
+  assert.equal(prompts[3].userPrompt, prompts[4].userPrompt);
   for (const prompt of prompts) {
     assert.ok(!/nihilistic college student|mommy blogger|Start with the supplied location/.test(prompt.systemPrompt));
   }
@@ -103,17 +104,22 @@ try {
   assert.ok(prompts[1].systemPrompt.includes('warm, steady local weatherman'));
   assert.ok(prompts[1].systemPrompt.includes('do not minimize danger'));
   assert.ok(!prompts[0].systemPrompt.includes('one concrete, ordinary intention'));
-  assert.ok(prompts[2].systemPrompt.includes('one concrete, ordinary intention'));
+  assert.ok(prompts[2].systemPrompt.includes('incorrigibly optimistic'));
+  assert.ok(prompts[2].systemPrompt.includes('one brief personal aside'));
   assert.ok(prompts[3].systemPrompt.includes('one concrete, ordinary intention'));
-  assert.ok(prompts[2].systemPrompt.includes('You fucking hate'));
-  assert.ok(prompts[3].systemPrompt.includes('ridiculously pleased'));
+  assert.ok(prompts[4].systemPrompt.includes('one concrete, ordinary intention'));
+  assert.ok(prompts[3].systemPrompt.includes('one telling detail'));
+  assert.ok(prompts[4].systemPrompt.includes('one telling detail'));
+  assert.ok(prompts[3].systemPrompt.includes('You fucking hate'));
+  assert.ok(prompts[4].systemPrompt.includes('ridiculously pleased'));
   assert.ok(prompts[0].systemPrompt.includes('There is no required opening'));
-  assert.ok(!prompts[2].systemPrompt.includes('Helena'));
+  assert.ok(!prompts[3].systemPrompt.includes('Helena'));
+  assert.ok(!prompts[4].systemPrompt.includes('Helena'));
   const input = JSON.parse(prompts[0].userPrompt.split('\n\n').slice(1).join('\n\n'));
   assert.equal(input.location, HELENA.name);
   assert.deepEqual(input.periods.map((p: { name: string }) => p.name), ['Tonight']);
   assert.ok(!prompts[0].userPrompt.includes(note), 'user anecdotes do not leak into the forecast');
-  const reactionInput = JSON.parse(prompts[2].userPrompt.split('\n\n').slice(1).join('\n\n'));
+  const reactionInput = JSON.parse(prompts[3].userPrompt.split('\n\n').slice(1).join('\n\n'));
   assert.deepEqual(reactionInput, { situation: [note] });
   const fallback = await buildWeatherRequest({ ...frozen, reports: [] }, 'reaction-negative');
   assert.deepEqual(JSON.parse(fallback.userPrompt.split('\n\n')[1]), { situation: ['Mostly Cloudy'] });
@@ -121,13 +127,13 @@ try {
   assert.equal((await buildWeatherRequest(stale, 'reaction-negative')).userPrompt, fallback.userPrompt);
   for (const scene of ['It is hot and humid.', 'It is raining.', 'It is mild and sunny.']) {
     const otherWeather = { ...frozen, reports: [{ ...frozen.reports[0], text: scene }] };
-    for (const [voice, original] of [['reaction-negative', prompts[2]], ['reaction-positive', prompts[3]]] as const) {
+    for (const [voice, original] of [['reaction-negative', prompts[3]], ['reaction-positive', prompts[4]]] as const) {
       const request = await buildWeatherRequest(otherWeather, voice);
       assert.equal(request.systemPrompt, original.systemPrompt, 'personal-intention guidance is independent of weather conditions');
       assert.deepEqual(JSON.parse(request.userPrompt.split('\n\n')[1]), { situation: [scene] });
     }
   }
-  await assert.rejects(() => buildWeatherRequest(frozen, 'student'), /four active/);
+  await assert.rejects(() => buildWeatherRequest(frozen, 'student'), /active weather voice/);
   await assert.rejects(() => buildWeatherRequest(frozen, 'weather-dark'), /replay-only/);
   await assert.rejects(() => buildWeatherRequest(frozen, 'forecast-negative', 'feel'), /require/);
   await assert.rejects(() => buildWeatherRequest(frozen, 'reaction-negative', 'today'), /require/);
@@ -156,12 +162,14 @@ try {
     '--import', 'tsx', 'src/dailyPreview.ts', '--dir', directory, 'weather', ...args
   ], { timeout: 15_000 });
   const dry = await cli('generate', 'all', '--dry-run');
-  assert.ok(dry.stdout.includes('4 prompt(s); zero model calls and zero attempts.'));
+  assert.ok(dry.stdout.includes('5 prompt(s); zero model calls and zero attempts.'));
+  const neutralDry = await cli('generate', 'forecast-neutral', '--dry-run');
+  assert.ok(neutralDry.stdout.includes('warm, steady local weatherman'));
   await assert.rejects(() => cli('generate', 'all', '--mode', 'feel', '--dry-run'), /require/);
   await assert.rejects(() => cli('generate', 'student', '--dry-run'), /Unknown weather voice/);
   const variants = ['gpt-6.1-sol:low', 'gpt-6-astra:low', 'gpt-5.6-luna:off'];
   const matrix = await cli('generate', 'all', '--parallel', '--dry-run', ...variants.flatMap(v => ['--variant', v]));
-  assert.ok(matrix.stdout.includes('4 voices x 3 variants = 12 calls (parallel)'));
+  assert.ok(matrix.stdout.includes('5 voices x 3 variants = 15 calls (parallel)'));
   await assert.rejects(() => cli('generate', '--dry-run', '--variant', variants[0], '--variant', variants[0]), /Duplicate/);
   await assert.rejects(() => cli('generate', '--dry-run', '--model', 'fixture', '--variant', variants[0], '--variant', variants[1]), /not both/);
   await assert.rejects(() => cli('generate', '--dry-run', '--model', 'fixture'), /Choose --model and --thinking/);

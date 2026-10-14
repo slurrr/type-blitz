@@ -43,7 +43,8 @@ const LEGACY_WEATHER_VOICES = {
 } as const;
 export const WEATHER_VOICES = {
   'forecast-negative': 'Nasty local weatherman',
-  'forecast-positive': 'Reassuring local weatherman',
+  'forecast-neutral': 'Neutral local weatherman',
+  'forecast-positive': 'Personally optimistic local weatherman',
   'reaction-negative': 'Negative human weather reaction',
   'reaction-positive': 'Overly positive human weather reaction'
 } as const;
