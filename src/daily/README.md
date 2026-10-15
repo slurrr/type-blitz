@@ -247,19 +247,28 @@ confusing outputs from different headlines. First reading view:
 
 ### Collection boundaries and limitations
 
-- One discovery navigation, first 25 posts, at most six candidate article navigations.
+- One discovery navigation, first 100 posts, at most ten candidate article navigations.
+  The original standalone buzz preview still uses 25; old 25-post headline archives
+  remain readable with their original feed and duplicate-validation rules.
   Post eligibility: within 72 hours, 20+ comments, descriptive headline, external HTTPS
   article URL rather than obvious image/video/social-media links.
-- Read article/main paragraphs on the linked publisher in an owned browser tab.
+- Read visible article/articleBody/main/role=main paragraphs on the linked publisher
+  in an owned browser tab. Poll for up to 15 seconds, requiring one second of stable
+  reporting/title/date before accepting it. Interactive DOM is sufficient; do not
+  wait for every ad/analytics load event. Missing containers/short text can be
+  transient hydration states, not immediate proof of a blocked article. Explicit
+  security/CAPTCHA and paywall indicators stop that candidate without a bypass.
+  Hidden paragraphs and navigation/aside/footer text are excluded.
   Require a publication timestamp with timezone within 72 hours and at least 800
   characters of reporting; cap at 14,000 characters. Retain actual final URL, title,
   published/captured times, extraction container and truncation flag.
-- Exact URL / substantial title-word overlap skips likely duplicates. This is not
+- Exact URL / substantial title-word or descriptive URL-slug overlap skips likely
+  duplicates, both among headlines and between headlines and buzz. This is not
   semantic event deduplication; inspect that the two stories really are distinct.
 - Two bounded top-sort discussion requests total, at most six substantive branches
   and two replies per branch. Author fields excluded; inline handles may remain in text.
 - Failed/blocked/too-short/undated article candidates are recorded and skipped within
-  the six-candidate budget, never reloaded or bypassed. Rate limits and lost tab
+  the ten-candidate budget, never reloaded or bypassed. Rate limits and lost tab
   ownership abort. Owned tabs close in finally; other tabs are never guessed or closed.
 - If two usable stories cannot be collected, fail without replacing the old packet.
   No model fallback to titles alone, silent source refresh, or automatic model retries.
@@ -368,6 +377,8 @@ covered by regression tests. Three-digit filenames are minimum padding, not a ca
 - `sources.ts`: shared-feed daily collection: two headlines plus two distinct buzz topics, alongside NWS.
 - `session.ts`: daily recipe, Helena-day gate, immutable packs/source archives; returns ordinary passages for the shared random Quick Play.
 - `worker.ts` / `client.ts`: isolated child generation, IPC progress, coalesced refresh and cancellation; no provider output in the TUI.
+- `collectionReport.ts` / `collectionCheck.ts`: immutable per-collection diagnostic
+  events, including failed collection before any writing; explicit source-only checks.
 - `requestView.ts`: one-attempt HTML renderer/export and `type-blitz request ID` command; no generation.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
@@ -426,7 +437,11 @@ and repeats allowed. No sequential deck, interleaving or category balancing in p
 The standard renderer, countdown, Next/Retry and initials → high-score flow are shared.
 Mode-specific model/date/count displays, banner/footer decorations and waiting screen
 have been removed. An unavailable pool is indicated only in the existing menu footer
-when the user tries to play it. Technical details stay in `--daily-status`.
+when the user tries to play it. A minimal inline Daily badge is the one status
+exception: READY (green) only for a successful current-day pack with no later error,
+FAIL (red) for a failed operation despite any retained pack, RUN (yellow) while the
+local worker is busy, WAIT (gray) otherwise. It updates without selecting the mode.
+Technical details stay in `--daily-status`.
 All use **Sol 6.1 low**. Accepted
 prompt files are unchanged; headlines 067/068 were explicitly accepted/marked good.
 Weather presenters include the location; human reactions retain their location-free
@@ -457,10 +472,10 @@ and generates again today. Failure preserves the old pack with its original date
 `--daily-dir` / `TYPE_BLITZ_DAILY_GAME_DIR` override game storage; the preview's
 `TYPE_BLITZ_DAILY_DIR` remains independent. No credentials enter these artifacts.
 
-Daily collection reuses a single 25-post feed snapshot for headlines and buzz.
-It keeps the existing six-article candidate budget, with **four** bounded discussion
+Daily collection reuses a single 100-post feed snapshot for headlines and buzz.
+It uses a ten-article candidate budget, with **four** bounded discussion
 requests total: two headline threads and two distinct remaining eligible topics.
-Buzz excludes headline IDs and URL/title-overlap duplicates; no subreddit allowlist
+Buzz excludes headline IDs and URL/title/slug-overlap duplicates; no subreddit allowlist
 or semantic topic classifier. NWS still uses two public requests. Account/browser,
 readability and source-diversity limitations remain; this is workstation-local,
 not the browser companion's future public-hosting design.
@@ -472,6 +487,17 @@ writers, corrupted-state refusal, cached child IPC, CLI status/help/list, and a 
 PTY smoke covering random daily Next/restart, ordinary initials → scores flow,
 absence of model/date/count decorations, HJKL and classic/custom isolation.
 PTY tests use Python 3, fixture passages, isolated scores and `--no-daily --no-sound`.
+
+`type-blitz --daily-check` explicitly tests the same source collector under the shared
+lock, without creating a writer, changing day state/cache, or consuming attempt IDs.
+It writes only `collection/<UUID>.json` and prints selected topics (or an error) and
+the report path. Normal generation also writes a report for every settled collection,
+including failure before source packets or model requests exist. Reports contain
+candidate URLs/titles, accepted/skipped decisions, page-state hints, timing and counts;
+no raw DOM, cookies, headers or account/browser history. --daily-status returns the
+latest generation's report path only if it exists (old failures cannot be reconstructed).
+Hard-killed processes may still lack a completed report. A successful source-only
+check does not mean a new playable pack exists and never changes the menu badge.
 
 A crashed `.lock` is not guessed away: inspect its recorded PID and remove only a
 confirmed stale lock before explicit refresh. `state.json` retains running/error

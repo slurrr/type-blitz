@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { BrowserCommand } from '../daily/browser.js';
 import { ARTICLE_SCRIPT, collectHeadlines } from '../daily/headlineBrowser.js';
-import { collectHeadlinesOnce, headlineCandidates, headlineSourceId, publicArticleUrl, readHeadlines, sameStory, seedFromHeadline, validateArticle, validateHeadlines } from '../daily/headlines.js';
+import { HEADLINE_FEED_URL, HEADLINE_ARTICLE_LIMIT, collectHeadlinesOnce, headlineCandidates, headlineSourceId, publicArticleUrl, readHeadlines, sameStory, seedFromHeadline, validateArticle, validateHeadlines } from '../daily/headlines.js';
 import { generateParallel, getAttempt, listAttempts, markAttempt, readReviews, seedFromAttempt } from '../daily/history.js';
 import { FEED_URL } from '../daily/reddit.js';
 import { withPreviewLock } from '../daily/preview.js';
@@ -57,7 +57,7 @@ const browser: BrowserCommand = async args => {
   if (args[0] === 'close') { tabs.delete(id); return {}; }
   assert.deepEqual(args.slice(-2), ['--tab', id]);
   const url = tabs.get(id)!;
-  if (url === FEED_URL) {
+  if (url === HEADLINE_FEED_URL) {
     if (args[1].includes('document.body')) return { result: { loading: false, value: listing(posts) } };
     const match = /comments\/(a1|b2)\//.exec(args[1]);
     assert.ok(match); return { result: thread(match[1]) };
@@ -69,6 +69,8 @@ const browser: BrowserCommand = async args => {
 const packet = await collectHeadlines(browser, () => now);
 assert.equal(tabs.size, 0, 'close all owned tabs');
 assert.equal(packet.stories.length, 2);
+assert.equal(packet.feed, HEADLINE_FEED_URL);
+assert.equal(validateHeadlines({ ...packet, feed: FEED_URL }).feed, FEED_URL, 'legacy 25-post archives retain their original provenance');
 assert.equal(packet.skipped.length, 1);
 assert.equal(commands.filter(c => c[0] === 'open').length, 4, 'one feed and three different article navigations');
 assert.equal(commands.filter(c => c[0] === 'eval' && c[1].includes('const r = await fetch')).length, 2);
@@ -96,8 +98,8 @@ await assert.rejects(() => collectHeadlines(async args => {
     blockedArticles++; return { result: { loading: false, blocked: true, reason: 'Visible paywall' } };
   }
   return browser(args);
-}, () => now), /Only 0 usable/);
-assert.equal(blockedArticles, 6, 'bounded candidate reads, no bypass or endless fallbacks');
+}, () => now), /Only 0\/2 usable/);
+assert.equal(blockedArticles, HEADLINE_ARTICLE_LIMIT, 'bounded candidate reads, no bypass or endless fallbacks');
 assert.equal(tabs.size, 0);
 let missingIdOpens = 0;
 await assert.rejects(() => collectHeadlines(async args => {

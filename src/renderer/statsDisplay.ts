@@ -3,6 +3,7 @@ import { Palette, getTerminalDimensions } from './ansi.js';
 import { HighScoreRecord } from '../types.js';
 import { LITERARY_PASSAGES } from '../passages/passages.js';
 import { MENU_ACTIONS } from '../navigation.js';
+import type { DailyRunStatus } from '../daily/client.js';
 import { normalizeFramedLines } from './displayWidth.js';
 
 export function calculateGrade(wpm: number, accuracy: number): { grade: string; title: string } {
@@ -118,7 +119,7 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
   return normalizeFramedLines(result, cols);
 }
 
-export function renderMenuView(selectedIndex: number, soundEnabled: boolean): string[] {
+export function renderMenuView(selectedIndex: number, soundEnabled: boolean, dailyStatus: DailyRunStatus = 'WAIT'): string[] {
   const { cols } = getTerminalDimensions();
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
@@ -141,7 +142,9 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean): st
     const isSelected = idx === selectedIndex;
     const prefix = isSelected ? Palette.neonOrangeFg(' > ') : '   ';
     const label = isSelected ? Palette.neonOrangeBg(` ${opt} `) : Palette.brightWhite(opt);
-    const line = prefix + label;
+    const statusColor = dailyStatus === 'READY' ? Palette.green : dailyStatus === 'FAIL' ? Palette.errorRedFg
+      : dailyStatus === 'RUN' ? Palette.yellow : Palette.dim;
+    const line = prefix + label + (MENU_ACTIONS[idx] === 'daily' ? ' ' + statusColor(dailyStatus) : '');
     const plainLen = line.replace(/\x1b\[[0-9;]*m/g, '').length;
     const margin = Math.max(0, Math.floor((innerWidth - plainLen) / 2));
     result.push(Palette.neonBorder('║') + ' '.repeat(margin) + line + ' '.repeat(Math.max(0, innerWidth - plainLen - margin)) + Palette.neonBorder('║'));

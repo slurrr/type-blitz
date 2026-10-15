@@ -16,7 +16,7 @@ with open(os.path.join(root, 'current.json')) as f:
     pack = json.load(f)
 master, slave = pty.openpty()
 fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 40, 120, 0, 0))
-env = dict(os.environ, TERM='xterm-256color', TYPE_BLITZ_EFFECTS='ansi',
+env = dict(os.environ, TERM='xterm-256color', FORCE_COLOR='3', TYPE_BLITZ_EFFECTS='ansi',
            TYPE_BLITZ_SCORES_FILE=os.path.join(root, 'pty-scores.json'))
 child = subprocess.Popen(['node', '--import', 'tsx', 'src/index.ts', '--no-daily', '--no-sound',
                           '--daily-dir', root], stdin=slave, stdout=slave, stderr=slave, env=env)
@@ -48,7 +48,8 @@ def send(text):
 try:
     expect('QUICK PLAY (DAILY GEN AI)')
     expect('NEON REFLEXES READY')
-    time.sleep(0.25)  # Cached input loads asynchronously; no status panel is rendered.
+    expect('\x1b[38;2;50;255;120mREADY')  # Today's fixture pack; just one green inline badge.
+    assert re.search(r'DAILY GEN AI\)\s+READY', re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output))
     assert 'Sol 6.1' not in output and 'passages' not in output
     assert output.index('QUICK PLAY (DAILY GEN AI)') < output.index('QUICK PLAY (RANDOM CLASSIC')
     send('l')

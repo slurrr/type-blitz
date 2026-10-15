@@ -5,6 +5,7 @@ import { navigationKey, MENU_ACTIONS } from './navigation.js';
 import { DailyClient } from './daily/client.js';
 import { dailyDirectory, dailyStatus } from './daily/session.js';
 import { registerRequestView } from './daily/requestView.js';
+import { checkDailyCollection } from './daily/collectionCheck.js';
 import { LITERARY_PASSAGES, getRandomPassage, getPassageById } from './passages/passages.js';
 import { GameEngine } from './engine/gameEngine.js';
 import { ANSI, Palette, getTerminalDimensions, renderTerminalFrame } from './renderer/ansi.js';
@@ -69,7 +70,7 @@ class TypeBlitzApp {
     this.config.soundEnabled = options.sound !== false;
     this.engine = new GameEngine(this.currentPassage, this.config);
     this.daily = new DailyClient(options.dailyDir, () => {
-      if (this.state === 'MENU' && this.dailyRequested) this.render();
+      if (this.state === 'MENU') this.render();
     });
   }
 
@@ -143,7 +144,7 @@ class TypeBlitzApp {
 
     switch (this.state) {
       case 'MENU':
-        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled));
+        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled, this.daily.status));
         break;
 
       case 'PASSAGE_SELECT':
@@ -596,6 +597,7 @@ program
   .option('-l, --list', 'List all available literature passages')
   .option('--daily-refresh', 'Collect fresh sources and generate a daily pack, then exit')
   .option('--daily-status', 'Show saved daily pack/status without any network calls')
+  .option('--daily-check', 'Check source collection and save diagnostics; no model calls or playable-pack changes')
   .option('--daily-dir <path>', 'Daily game runtime directory (separate from voice previews)', dailyDirectory())
   .option('--no-daily', 'Skip automatic generation; saved daily packs remain playable')
   .option('--no-sound', 'Start with sound disabled')
@@ -611,6 +613,21 @@ program
 
     if (options.dailyStatus) {
       console.log(JSON.stringify(await dailyStatus(options.dailyDir), null, 2));
+      return;
+    }
+    if (options.dailyCheck) {
+      const controller = new AbortController();
+      const cancel = () => controller.abort(new Error('Collection check cancelled'));
+      process.once('SIGINT', cancel);
+      process.once('SIGTERM', cancel);
+      try {
+        const result = await checkDailyCollection(options.dailyDir, undefined, controller.signal);
+        console.log(JSON.stringify(result, null, 2));
+        if (!result.ok) process.exitCode = 1;
+      } finally {
+        process.removeListener('SIGINT', cancel);
+        process.removeListener('SIGTERM', cancel);
+      }
       return;
     }
     if (options.dailyRefresh) {

@@ -37,10 +37,10 @@ export const browserCommand: BrowserCommand = async (args) => {
 };
 
 /** Wait for the original navigation. These are local DOM reads, never HTTP retries. */
-export async function readFeedDocument(command: BrowserCommand, tab: string): Promise<unknown> {
+export async function readFeedDocument(command: BrowserCommand, tab: string, feedUrl = FEED_URL): Promise<unknown> {
   const deadline = Date.now() + 10_000;
   const script = `(() => {
-    if (location.href !== ${JSON.stringify(FEED_URL)} || document.readyState !== 'complete' || !document.body?.innerText?.trim()) {
+    if (location.href !== ${JSON.stringify(feedUrl)} || document.readyState !== 'complete' || !document.body?.innerText?.trim()) {
       return { loading: true };
     }
     try { return { loading: false, value: JSON.parse(document.body.innerText) }; }

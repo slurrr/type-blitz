@@ -38,9 +38,9 @@ function httpUrl(value: unknown): string {
 }
 
 /** Conservative eligibility, not a semantic quality classifier. Preview the packet before writing. */
-export function eligiblePosts(listing: unknown, now = Date.now()): SourcePost[] {
+export function eligiblePosts(listing: unknown, now = Date.now(), limit = 25): SourcePost[] {
   const posts: SourcePost[] = [];
-  for (const item of children(listing).slice(0, 25)) {
+  for (const item of children(listing).slice(0, limit)) {
     const child = object(item);
     const p = object(child.data);
     if (child.kind !== 't3' || p.stickied || p.over_18 || p.removed_by_category) continue;

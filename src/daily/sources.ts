@@ -1,7 +1,8 @@
 import { browserCommand, readFeedDocument, type BrowserCommand } from './browser.js';
 import { collectHeadlines } from './headlineBrowser.js';
-import { sameStory, type HeadlinesPacket } from './headlines.js';
-import { eligiblePosts, extractComments, FEED_URL, makePacket } from './reddit.js';
+import { HEADLINE_FEED_URL, HEADLINE_POST_LIMIT, sameCoverage, type HeadlinesPacket } from './headlines.js';
+import type { CollectionObserver } from './collectionReport.js';
+import { eligiblePosts, extractComments, makePacket } from './reddit.js';
 import type { SourcePacket } from './types.js';
 import { collectWeather, type WeatherPacket } from './weather.js';
 
@@ -14,22 +15,23 @@ export interface DailySources {
 /** One shared discovery feed; two article discussions and two distinct buzz discussions. */
 export async function collectDailyReddit(
   command: BrowserCommand = browserCommand, now = () => Date.now(),
-  progress: (message: string) => void = () => {}
+  progress: (message: string) => void = () => {}, observe: CollectionObserver = () => {}
 ): Promise<Pick<DailySources, 'headlines' | 'buzz'>> {
-  const opened = await command(['open', FEED_URL]);
+  observe({ stage: 'feed', status: 'start', url: HEADLINE_FEED_URL });
+  const opened = await command(['open', HEADLINE_FEED_URL]);
   if (typeof opened.tabId !== 'string' && typeof opened.tabId !== 'number') throw new Error('Browser did not return an owned tab ID.');
   const tab = String(opened.tabId);
   try {
-    const listing = await readFeedDocument(command, tab);
+    const listing = await readFeedDocument(command, tab, HEADLINE_FEED_URL);
     progress('Reading two headline articles and their discussions');
-    const headlines = await collectHeadlines(command, now, { tab, listing });
+    const headlines = await collectHeadlines(command, now, { tab, listing }, observe);
     const selected = headlines.stories.flatMap(s => [s.post, s.article]);
-    const posts = eligiblePosts(listing, now()).filter(post =>
-      !headlines.stories.some(s => s.post.id === post.id) && !selected.some(s => sameStory(s, post)));
+    const posts = eligiblePosts(listing, now(), HEADLINE_POST_LIMIT).filter(post =>
+      !headlines.stories.some(s => s.post.id === post.id) && !selected.some(s => sameCoverage(s, post)));
     const buzz: SourcePacket[] = [];
     progress('Reading two other Reddit buzz discussions');
     for (const post of posts) {
-      if (buzz.some(b => b.post.id === post.id || sameStory(b.post, post))) continue;
+      if (buzz.some(b => b.post.id === post.id || sameCoverage(b.post, post))) continue;
       const path = new URL(post.permalink).pathname.replace(/\/$/, '') + '.json?sort=top&limit=20&depth=2&raw_json=1';
       const script = `(async () => {
         const r = await fetch(${JSON.stringify(path)}, { signal: AbortSignal.timeout(15000) });
@@ -38,7 +40,10 @@ export async function collectDailyReddit(
       })()`;
       const thread = await command(['eval', script, '--tab', tab]);
       const packet = makePacket(post, extractComments(thread.result, post.id), new Date(now()).toISOString());
-      packet.selection = 'First two distinct eligible popular/hot topics excluding the selected headlines; same 25-post discovery snapshot. Two bounded discussion requests; no subreddit allowlist.';
+      packet.feed = HEADLINE_FEED_URL;
+      packet.selection = `First two distinct eligible popular/hot topics excluding the selected headlines; same ${HEADLINE_POST_LIMIT}-post discovery snapshot. Two bounded discussion requests; no subreddit allowlist.`;
+      observe({ stage: 'buzz', status: 'ready', url: post.permalink, title: post.title,
+        details: { comments: packet.comments.length } });
       buzz.push(packet);
       if (buzz.length === 2) break;
     }
@@ -49,17 +54,29 @@ export async function collectDailyReddit(
 
 /** Cancellation still permits owned-tab cleanup. No new network work after cancellation. */
 export async function collectDailySources(
-  signal: AbortSignal, progress: (message: string) => void
+  signal: AbortSignal, progress: (message: string) => void, observe: CollectionObserver = () => {}
 ): Promise<DailySources> {
   const command: BrowserCommand = async args => {
     if (args[0] !== 'close') signal.throwIfAborted();
     return browserCommand(args);
   };
   progress('Collecting Helena forecast and Reddit popular/hot');
+  const weatherWork = async () => {
+    observe({ stage: 'weather', status: 'start' });
+    try {
+      const packet = await collectWeather((url, options) => fetch(url, { ...options, signal: AbortSignal.any([signal, options.signal!]) }));
+      observe({ stage: 'weather', status: 'ready', url: packet.forecast?.url,
+        details: { issuedAt: packet.forecast?.issuedAt, periods: packet.forecast?.periods.length } });
+      return packet;
+    } catch (error) {
+      observe({ stage: 'weather', status: 'error', reason: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
+  };
   // Settle both branches before releasing the generation lock, even if one fails.
   const results = await Promise.allSettled([
-    collectWeather((url, options) => fetch(url, { ...options, signal: AbortSignal.any([signal, options.signal!]) })),
-    collectDailyReddit(command, () => Date.now(), progress)
+    weatherWork(),
+    collectDailyReddit(command, () => Date.now(), progress, observe)
   ] as const);
   signal.throwIfAborted();
   const [weather, reddit] = results;

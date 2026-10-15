@@ -5,9 +5,13 @@ import { readJson, saveJson, sourceId } from './preview.js';
 import { cleanText, FEED_URL } from './reddit.js';
 import type { SourceComment, SourcePost } from './types.js';
 
+export const HEADLINE_POST_LIMIT = 100;
+export const HEADLINE_ARTICLE_LIMIT = 10;
+export const HEADLINE_FEED_URL = 'https://www.reddit.com/r/popular/hot.json?limit=100&raw_json=1';
+
 export interface HeadlineArticle {
   url: string; title: string; publishedAt: string; fetchedAt: string;
-  text: string; extraction: 'article' | 'main'; truncated: boolean;
+  text: string; extraction: 'article' | 'main' | 'articleBody'; truncated: boolean;
 }
 export interface HeadlineStory { post: SourcePost; article: HeadlineArticle; comments: SourceComment[] }
 export interface HeadlinesPacket {
@@ -46,7 +50,7 @@ export function headlineCandidates(listing: unknown, now = Date.now()): SourcePo
   const root = object(listing), data = object(root.data);
   if (root.kind !== 'Listing' || !Array.isArray(data.children)) throw new Error('Expected Reddit discovery Listing.');
   const candidates: SourcePost[] = [], seen = new Set<string>();
-  for (const item of data.children.slice(0, 25)) {
+  for (const item of data.children.slice(0, HEADLINE_POST_LIMIT)) {
     const child = object(item), p = object(child.data);
     if (child.kind !== 't3' || p.stickied || p.over_18 || p.removed_by_category || p.is_video || p.is_gallery) continue;
     const title = cleanText(p.title, 500), id = cleanText(p.id, 20);
@@ -72,9 +76,11 @@ export function validateArticle(value: unknown, now = Date.now()): HeadlineArtic
     publishedAt: date(a.publishedAt), fetchedAt: date(a.fetchedAt),
     extraction: a.extraction as HeadlineArticle['extraction'], truncated: a.truncated === true
   };
-  if (!['article', 'main'].includes(article.extraction) || article.text.length < 800 ||
-      now - Date.parse(article.publishedAt) < -300_000 || now - Date.parse(article.publishedAt) > MAX_AGE) {
-    throw new Error('Article needs recent publication evidence and at least 800 characters of reporting.');
+  if (!['article', 'main', 'articleBody'].includes(article.extraction) || article.text.length < 800) {
+    throw new Error('Article needs at least 800 characters of visible reporting in an identified container.');
+  }
+  if (now - Date.parse(article.publishedAt) < -300_000 || now - Date.parse(article.publishedAt) > MAX_AGE) {
+    throw new Error(`Article publication ${article.publishedAt} is outside the recent 72-hour window.`);
   }
   return article;
 }
@@ -85,6 +91,21 @@ export function sameStory(a: { url: string; title: string }, b: { url: string; t
   const intersection = [...x].filter(w => y.has(w)).length;
   return intersection >= 4 && intersection / Math.min(x.size, y.size) >= 0.6;
 }
+/** Collection-only extra check: descriptive URL slugs often retain the event a short headline omits.
+ * Keep historical validation's original sameStory rule unchanged. Still not semantic deduplication. */
+export function sameCoverage(a: { url: string; title: string }, b: { url: string; title: string }): boolean {
+  if (sameStory(a, b)) return true;
+  const words = (url: string) => {
+    const slug = new URL(url).pathname.split('/').filter(Boolean).at(-1) ?? '';
+    return new Set((slug.toLowerCase().match(/[a-z]{3,}/g) ?? [])
+      .filter(w => !['the', 'and', 'for', 'with', 'that', 'this', 'from', 'after', 'their', 'says', 'have', 'will', 'more', 'about', 'html'].includes(w))
+      .map(w => w.replace(/ies$/, 'y').replace(/s$/, '').slice(0, 8)));
+  };
+  const x = words(a.url), y = words(b.url);
+  const shared = [...x].filter(w => y.has(w)).length;
+  return shared >= 4 && shared / Math.min(x.size, y.size) >= 0.6;
+}
+
 function comments(value: unknown, parent: string, depth = 0): SourceComment[] {
   if (!Array.isArray(value) || value.length > (depth ? 2 : 6)) throw new Error('Invalid headline discussion sample.');
   return value.map(v => {
@@ -97,8 +118,8 @@ function comments(value: unknown, parent: string, depth = 0): SourceComment[] {
 }
 export function validateHeadlines(value: unknown): HeadlinesPacket {
   const p = object(value), fetchedAt = date(p.fetchedAt);
-  if (p.version !== 1 || p.kind !== 'headlines' || p.feed !== FEED_URL || !Array.isArray(p.stories) ||
-      p.stories.length !== 2 || !Array.isArray(p.limitations) || p.limitations.length > 10 || !Array.isArray(p.skipped) || p.skipped.length > 6) {
+  if (p.version !== 1 || p.kind !== 'headlines' || ![FEED_URL, HEADLINE_FEED_URL].includes(String(p.feed)) || !Array.isArray(p.stories) ||
+      p.stories.length !== 2 || !Array.isArray(p.limitations) || p.limitations.length > 10 || !Array.isArray(p.skipped) || p.skipped.length > HEADLINE_ARTICLE_LIMIT) {
     throw new Error('Invalid frozen headlines packet; expected two stories.');
   }
   const stories = p.stories.map(v => {
@@ -114,7 +135,7 @@ export function validateHeadlines(value: unknown): HeadlinesPacket {
   });
   if (sameStory(stories[0].article, stories[1].article)) throw new Error('Duplicate headline stories.');
   return {
-    version: 1, kind: 'headlines', feed: FEED_URL, fetchedAt, selection: text(p.selection, 1500),
+    version: 1, kind: 'headlines', feed: p.feed as string, fetchedAt, selection: text(p.selection, 1500),
     limitations: p.limitations.map(v => text(v, 1000)), stories,
     skipped: p.skipped.map(v => { const s = object(v); return { url: publicArticleUrl(s.url), reason: text(s.reason, 1200) }; })
   };

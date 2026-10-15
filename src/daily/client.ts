@@ -1,6 +1,8 @@
 import { fork, type ChildProcess } from 'node:child_process';
 import { cleanText } from './reddit.js';
-import { dailyDirectory, dailyStatus, validateDailyPack, type DailyPack, type DailyResult } from './session.js';
+import { dailyDay, dailyDirectory, dailyStatus, validateDailyPack, type DailyPack, type DailyResult } from './session.js';
+
+export type DailyRunStatus = 'READY' | 'FAIL' | 'RUN' | 'WAIT';
 
 export class DailyClient {
   pack?: DailyPack;
@@ -11,6 +13,12 @@ export class DailyClient {
   private pending?: Promise<DailyResult>;
   private disposed = false;
   constructor(readonly directory = dailyDirectory(), private changed: () => void = () => {}) {}
+
+  get status(): DailyRunStatus {
+    if (this.busy) return 'RUN';
+    if (this.error) return 'FAIL';
+    return this.pack?.day === dailyDay() ? 'READY' : 'WAIT';
+  }
 
   async load(): Promise<void> {
     try {

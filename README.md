@@ -70,6 +70,9 @@ type-blitz --daily-refresh
 # Inspect the saved pack without network calls
 type-blitz --daily-status
 
+# Test collection only; save diagnostics without model calls or replacing the pack
+type-blitz --daily-check
+
 # Play cached daily/classic passages without automatic generation
 type-blitz --no-daily
 ```
@@ -95,6 +98,12 @@ not queue more runs. Failed refreshes preserve the previous pack; its original d
 and failure details remain inspectable with `--daily-status`. A failed automatic
 attempt is not retried on every launch: use R when ready to retry.
 
+One small status sits next to the Daily menu item: green **READY** means today's
+pack completed successfully; red **FAIL** means the latest operation failed, even
+when an older pack remains playable. Yellow **RUN** means work is in progress;
+gray **WAIT** means no current-day success is loaded. No extra panels or gameplay
+metadata are added.
+
 Both Quick Play modes use the **same random picker and gameplay flow**—only the
 passage pool differs. Each start/Next draws randomly with replacement, just like
 Classic: no ordered deck, category schedule, voice rotation or repeat suppression.
@@ -112,6 +121,19 @@ explicit refresh available. `--no-sound` starts silently.
 Collection requires the workstation's connected **bb-browser** and existing **Pi
 OpenAI/Codex login**. It uses one Reddit popular/hot feed, bounded article/discussion
 reads, and public NWS forecasts—not a hosted crawler or a universal news ranking.
+Daily/headline discovery now reads up to **100 posts in one snapshot**, tries at
+most **10 article candidates**, and still makes at most four discussion requests.
+The reader waits for stable visible reporting, not every advertising asset to load;
+security challenges and paywalls are skipped, never bypassed. Dates/800-character
+minimums remain strict. Title and descriptive URL-slug overlap reduce duplicate
+coverage, but do not guarantee semantic topic diversity.
+
+`--daily-check` tests this collection path without a model login/call or changes to
+`current.json`, `state.json`, attempts or packs. It prints the selected topics and
+an immutable `collection/<UUID>.json` diagnostic report. Generation also archives
+collection reports on success or failure: candidate URLs, skips, page-state hints,
+timing and actual candidate counts. `--daily-status` links the latest run's report
+when available. A source-only check does **not** turn a failed daily run into READY.
 See [daily module details](src/daily/README.md) and the runtime `daily/README.md` for
 history and interrupted-lock recovery.
 

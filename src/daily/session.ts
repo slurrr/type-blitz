@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { Passage } from '../types.js';
@@ -10,6 +10,7 @@ import { preparePassage, readJson, saveJson, withPreviewLock } from './preview.j
 import { cleanText } from './reddit.js';
 import { collectDailySources, type DailySources } from './sources.js';
 import type { VoiceId, Writer } from './types.js';
+import { collectionReportPath, traceCollection, type CollectionObserver } from './collectionReport.js';
 import { HELENA, seedFromWeather } from './weather.js';
 
 export const DAILY_MODEL = 'gpt-6.1-sol';
@@ -29,9 +30,9 @@ interface DailyState {
   version: 1; day: string; runId: string; startedAt: string;
   status: 'running' | 'ready' | 'error'; error?: string;
 }
-export interface DailyResult { pack?: DailyPack; reused: boolean; error?: string }
+export interface DailyResult { pack?: DailyPack; reused: boolean; error?: string; collectionReport?: string }
 export interface DailyDependencies {
-  collect(signal: AbortSignal, progress: (message: string) => void): Promise<DailySources>;
+  collect(signal: AbortSignal, progress: (message: string) => void, observe?: CollectionObserver): Promise<DailySources>;
   writer(signal: AbortSignal): Promise<Writer>;
   now(): Date;
 }
@@ -81,8 +82,14 @@ async function readState(directory: string): Promise<DailyState | undefined> {
 }
 export async function dailyStatus(directory: string): Promise<DailyResult> {
   const pack = await readDailyPack(directory), state = await readState(directory);
-  return { pack, reused: true, error: state?.status === 'running'
-    ? 'Generation is running or was interrupted. Check the lock PID before recovery.' : state?.error };
+  let collectionReport: string | undefined;
+  if (state) {
+    const path = collectionReportPath(directory, state.runId);
+    try { await access(path); collectionReport = path; }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  }
+  return { pack, reused: true, collectionReport, error: state?.status === 'running'
+    ? 'Generation is running or was interrupted. Check the lock PID before recovery.' : state?.status === 'error' ? state.error || 'Daily generation failed; inspect state.json.' : state?.error };
 }
 
 /** Accepted prompt files are loaded verbatim. No writer sees another voice's output. */
@@ -123,7 +130,8 @@ export async function ensureDaily(
       const existing = await readState(directory);
       if (!options.force && (existing?.day === day || previous?.day === day)) {
         return { pack: previous, reused: true, error: existing?.day === day
-          ? existing.status === 'running' ? 'Earlier generation was interrupted; use manual refresh after checking its lock.' : existing.error
+          ? existing.status === 'running' ? 'Earlier generation was interrupted; use manual refresh after checking its lock.'
+            : existing.status === 'error' ? existing.error || 'Daily generation failed; inspect state.json.' : existing.error
           : undefined };
       }
       signal.throwIfAborted();
@@ -134,7 +142,7 @@ export async function ensureDaily(
         progress('Preparing Sol 6.1 low');
         const writer = await deps.writer(signal); // Fail missing model/login setup before browser collection.
         signal.throwIfAborted();
-        const sources = await deps.collect(signal, progress);
+        const sources = await traceCollection(directory, state.runId, observe => deps.collect(signal, progress, observe));
         signal.throwIfAborted();
         const archive = join(directory, 'sources', state.runId);
         await mkdir(archive, { recursive: true });
@@ -166,12 +174,12 @@ export async function ensureDaily(
         progress('Daily pack ready');
         return { pack, reused: false };
       } catch (error) {
-        const message = cleanText(error instanceof Error ? error.message : String(error), 1200);
+        const message = cleanText(error instanceof Error ? error.message : String(error), 1200) || 'Daily generation failed.';
         await saveJson(join(directory, 'state.json'), { ...state, status: 'error', error: message });
         return { pack: previous, reused: false, error: message };
       }
     });
   } catch (error) {
-    return { pack: previous, reused: true, error: cleanText(error instanceof Error ? error.message : String(error), 1200) };
+    return { pack: previous, reused: true, error: cleanText(error instanceof Error ? error.message : String(error), 1200) || 'Daily generation failed.' };
   }
 }
