@@ -1,3 +1,4 @@
+import { parsePresentation, PRESENTATION_FORMAT } from './presentation.js';
 import { localTimestamp } from './time.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { link, mkdir, open, readFile, readdir, unlink } from 'node:fs/promises';
@@ -117,10 +118,15 @@ async function completeAttempt(directory: string, attempt: Attempt, writer: Writ
     if (attempt.result.model !== writer.model || attempt.result.thinking !== writer.thinking) {
       throw new Error('Unexpected model/thinking substitution.');
     }
-    const { text, warnings } = preparePassage(attempt.result.text);
+    if (attempt.request.outputFormat !== undefined && attempt.request.outputFormat !== PRESENTATION_FORMAT) {
+      throw new Error('Unsupported saved writer output format.');
+    }
+    const presentation = attempt.request.outputFormat === PRESENTATION_FORMAT ? parsePresentation(attempt.result.text) : undefined;
+    const { text, warnings } = preparePassage(presentation?.text ?? attempt.result.text);
     attempt.passage = {
       id: `daily-${attempt.attemptId}-${attempt.sourceId.slice(0, 12)}-${attempt.voice}`,
-      title: attempt.source.title, author: ALL_VOICES[attempt.voice], year: attempt.source.year,
+      title: presentation?.title ?? attempt.source.title,
+      author: presentation ? `${presentation.name} · ${presentation.descriptor}` : ALL_VOICES[attempt.voice], year: attempt.source.year,
       genre: 'Daily AI / ' + (attempt.source.kind === 'weather' ? 'Weather' : attempt.source.kind === 'headlines' ? 'Headlines' : 'Reddit'), text
     };
     attempt.warnings = warnings;

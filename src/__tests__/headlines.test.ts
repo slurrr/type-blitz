@@ -137,7 +137,7 @@ try {
   assert.ok(!seeds[0].request.userPrompt.includes(packet.stories[1].post.title));
   await assert.rejects(() => seedFromHeadline(frozen, 2), /Choose headline/);
   const writer: Writer = { model: 'fixture', thinking: 'low', async generate(request) {
-    return { model: 'fixture', thinking: 'low', text: 'A library repair budget sounds dull until you think about the chair where somebody waits between shifts because sitting there costs nothing. I want that place to stay open. Not everything useful has to become a business, and not every hour of your day should require buying something.',
+    return { model: 'fixture', thinking: 'low', text: JSON.stringify({ title: 'Keeping the library open', name: 'Alex', descriptor: 'Queens, NY', text: 'A library repair budget sounds dull until you think about the chair where somebody waits between shifts because sitting there costs nothing. I want that place to stay open. Not everything useful has to become a business, and not every hour of your day should require buying something.' }),
       audit: { ...request, tools: [], messageRoles: ['user'], payloadVerified: true, reasoningEffort: 'low' } };
   } };
   const batch = await withPreviewLock(dir, () => generateParallel(dir, seeds.map(seed => ({ seed, writer }))));

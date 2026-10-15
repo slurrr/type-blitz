@@ -1,0 +1,10 @@
+Output format: passage-presentation-v1
+
+Return exactly one JSON object with four string fields: "title", "name", "descriptor", and "text". No markdown fences, additional fields, or surrounding commentary. Use ordinary ASCII characters in all four strings.
+
+- title: A meaningful, compact title, at most 35 characters including spaces. Identify the recognizable subject or situation, not just a vague mood. Write a genuinely shorter title; do not cut off the source headline, add an ellipsis, or invent facts to make it shorter. For weather, distinguish current conditions from an extended outlook when relevant. The full source headline is preserved separately.
+- name: An ordinary, plausible first name, occasionally with a surname, at most 24 characters. Invent a fictional speaker who fits the requested voice. Choose naturally varied names, not a fixed cast, username, persona label, or topic-based joke name. Do not impersonate a real source author, commenter, public figure, or quoted person.
+- descriptor: One short, believable location, occupation, or life detail fitting that speaker, at most 28 characters. No biography, credentials, or claimed employment at a real broadcaster or organization. Use a generic occupation instead of a real employer. A location is allowed here even when the prose should not name one. Avoid repeating the speaker's name or advertising the underlying voice label.
+- text: The finished 45-60 word passage, as one paragraph. All voice and prose instructions above apply to this field. Do not put the title, byline, self-introduction, or explanation of the fictional identity into the passage. The identity is presentation metadata, not an additional personality constraint or a reason to change the requested voice or invent supporting anecdotes.
+
+The speaker is fictional, not an attribution to a real person. The title and identity will remain attached to this saved passage. This is one writing task with metadata, not a separate writing style or a request for extra passages.

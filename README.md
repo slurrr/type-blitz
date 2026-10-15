@@ -137,6 +137,12 @@ when available. A source-only check does **not** turn a failed daily run into RE
 See [daily module details](src/daily/README.md) and the runtime `daily/README.md` for
 history and interrupted-lock recovery.
 
+Daily passages now get a short, meaningful title and a fictional speaker such as
+`Simon · Kilgore, TX`, generated alongside the prose in the same model call. The
+speaker stays attached to the saved passage. Full source headlines and underlying
+voices remain in the archive; terminal titles/bylines wrap rather than clip. Old
+packs remain unchanged until an explicit refresh or the next daily generation.
+
 ## Browse saved data in the browser
 
 Open **[Type-Blitz review](http://poopship.tail4eec74.ts.net:19829/)** over Tailscale

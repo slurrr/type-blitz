@@ -76,9 +76,10 @@ try:
     expect('TYPE THE TEXT AS IT STREAMS')
     expect('[CTRL+R] RESTART')
     plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
-    header_match = re.search(r'╔[^\r\n]*?SYNTHWAVE \|[^\r\n]*?╗', plain)
+    header_match = re.search(r'╔[^\r\n]*? — by [^\r\n]*?╗', plain)
     assert header_match is not None
     header = header_match.group()
+    assert pack['entries'][0]['passage']['author'] in header, 'saved speaker identity is visible'
     assert not re.search(r'DAILY \d+/', plain)
     assert 'Sol 6.1' not in plain and pack['day'] not in plain
     send('\x12')  # Ctrl+R keeps this exact randomly chosen passage.
@@ -90,7 +91,7 @@ try:
     send('l')
     expect('[CTRL+R] RESTART')
     plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
-    assert any(e['passage']['title'][:30].upper() in plain for e in pack['entries']), 'Next stays in daily pool'
+    assert any(e['passage']['title'] in plain for e in pack['entries']), 'Next stays in daily pool'
     assert not re.search(r'DAILY \d+/', plain)
     send('\x1b')
     expect('QUICK PLAY (DAILY GEN AI)')

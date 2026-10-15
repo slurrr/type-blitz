@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildRequest, sourceId, withPreviewLock } from '../daily/preview.js';
+import { sourceId, withPreviewLock } from '../daily/preview.js';
 import { attemptName, formatTable, generateAttempt, generateParallel, getAttempt, listAttempts, markAttempt, migrateLegacy, readReviews, reviewAttempts, seedFromAttempt, seedFromPacket, summarizePrompts, writeOnce } from '../daily/history.js';
 import { VOICES, type PreviewSample, type SourcePacket, type Writer } from '../daily/types.js';
 import { comparisonVariants } from '../daily/variants.js';
@@ -39,7 +39,7 @@ try {
     const sample: PreviewSample = {
       version: 1, voice, label: VOICES[voice], sourceId: sourceId(packet), createdAt: packet.fetchedAt,
       model: 'openai-codex/fixture', thinking: 'xhigh', status: 'ready', elapsedMs: 100,
-      request: await buildRequest(packet, voice),
+      request: { systemPrompt: 'Historical prose-only request for ' + voice, userPrompt: 'Historical source packet.\n\n' + JSON.stringify(packet) },
       passage: { id: voice, text: prose, title: packet.post.title, year: 2026, author: VOICES[voice], genre: 'fixture' }
     };
     const raw = JSON.stringify(sample, null, 2) + '\n';
@@ -105,6 +105,9 @@ try {
   };
   const replay = await withPreviewLock(dir, () => generateAttempt(dir, seed, fake));
   assert.equal(replay.attemptId, 4);
+  assert.equal(replay.status, 'ready');
+  assert.equal(replay.passage!.title, packet.post.title, 'legacy replay keeps its prose-only contract');
+  assert.equal(replay.request.outputFormat, undefined);
   assert.equal(replay.replayOf, 1);
   assert.equal(replay.execution, 'sequential');
   assert.deepEqual(replay.request, seed.request, 'transport cannot mutate the recorded instructions');
@@ -145,7 +148,8 @@ try {
       await allStarted;
       active--;
       if (thinking === 'low') throw new Error('one writer failed');
-      return { text: prose, model: 'fixture-' + thinking, thinking,
+      return { text: request.outputFormat ? JSON.stringify({ title: 'Repairing together', name: 'Maggie', descriptor: 'Mommy blogger', text: prose }) : prose,
+        model: 'fixture-' + thinking, thinking,
         audit: { systemPrompt: request.systemPrompt, userPrompt: request.userPrompt,
           tools: [], messageRoles: ['user'], payloadVerified: true } };
     }

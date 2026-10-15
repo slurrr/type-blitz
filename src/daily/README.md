@@ -335,6 +335,34 @@ metadata comes from their saved input, not the current context. Execution defaul
 to unknown; the initial batch in this project was known to be parallel. The preserved
 legacy files are never written again by the new CLI. No credentials are archived.
 
+## Short titles and fictional speakers
+
+New requests append `prompts/presentation.md` to the existing voice/prose instructions
+and mark `request.outputFormat = "passage-presentation-v1"`. The same model call returns
+JSON with `title` (35 characters max), `name` (24), `descriptor` (28), and `text`.
+The three shared prose prompts only change their output-only wording to allow this
+metadata; individual personalities and source inputs are unchanged. No extra model
+call, fixed cast, name registry, or cross-passage history is introduced. Names may
+naturally recur; global uniqueness is not enforced.
+
+The saved passage uses the short title and `name · descriptor` as its author; only
+`text` is typed. Identity persists with that passage rather than rerolling on play.
+The full headline stays in `attempt.source.title`, source packets and exact requests;
+raw model JSON and the underlying voice ID/label stay in history. The review page
+shows both the full source and the generated title/fictional-speaker metadata.
+
+Metadata must be plain bounded ASCII without control characters, markup or URLs.
+Invalid JSON/metadata/prose is an archived failure with raw output retained, not a
+truncated title, fallback persona, or hidden retry. A failed batch preserves the
+previous complete pack. Legacy requests without this format remain plain-prose
+replayable; old packs and historical identities are never rewritten. New names and
+titles reach cached gameplay after an explicit refresh or next day's generation.
+
+The terminal keeps natural capitalization, drops the redundant SYNTHWAVE prefix
+when showing a passage, and wraps the byline when it cannot fit beside the title.
+Narrow screens wrap metadata rather than clipping it. Classic/custom passages use
+the same header layout, without generating new names or altering their authors.
+
 ## Read-only browser review
 
 `type-blitz review` presents saved records directly in a browser, without an export

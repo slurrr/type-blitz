@@ -1,5 +1,5 @@
 # Current Goal
-Align saved app timestamps and review display with the America/Denver daily-run day. Next unresolved request: meaningful shorter terminal passage titles, not character truncation; retain full source/context. No title/prompt changes or regeneration yet.
+Implement approved short titles and generated fictional speaker identities in the existing writing call. Implementation/offline tests complete; next safe step is one user-approved fresh 16-passage pack, then inspect saved metadata and restart the existing review service. No regeneration has occurred yet in this task.
 
 # Current State
 User explicitly keeps the existing viewer but says the always-on service was unnecessary scope expansion: prefer the simplest file-based solution, and ask before adding persistent services or architectural scope. Do not treat this deployment as precedent.
@@ -11,11 +11,15 @@ Archive/category/record dropdowns select all old/current attempts, failed/pendin
 User's own latest refresh succeeded: Oct 15 10:22 Helena, run 6d9e1bcb-f461-4af3-9730-d3869ceb8b4d, attempts 025–040. 17.630 seconds total, 10.029 seconds collection; rest setup/writing. Headlines: Telegraph Zelensky and Kyiv Independent Europe/Russian assets. Runtime has 40 attempts and three saved packs: 001–008 Oct 14 19:29, 009–024 Oct 14 20:11, 025–040 Oct 15 10:22 (Helena pack completion times). The UTC picker made yesterday's 24 look like today; morning collection failure created no numbered attempts. New app timestamps save local ISO with DST offset; old immutable bytes/publisher dates stay unchanged, readable app fields localize them. No new collection/model calls during viewer/timezone work.
 
 # Decisions
-Keep accepted Sol 6.1 low prompts and 16 passages: eight weather, two headline reactions, three voices per each of two buzz topics. Same random picker as Classic, repeats allowed, no rotation/deck/category weighting, normal scoring. Only in-game status is the inline READY/FAIL/RUN/WAIT badge; old content is not successful current-day generation. HTML review is accepted; don't redesign its report.
+User approved model-generated title/name/short descriptor per passage, not a fixed cast; generic occupations rather than claiming real-broadcaster employment. Same call and voice personality, identity fixed with the passage, full source retained. Contract/limits/backward compatibility: src/daily/README.md, prompts/presentation.md. Individual voice prompts untouched; shared output-only clauses now allow JSON metadata. No separate identity service/database or uniqueness calls.
+
+Keep accepted Sol 6.1 low voice instructions and 16 passages: eight weather, two headline reactions, three voices per each of two buzz topics. Same random picker as Classic, repeats allowed, no rotation/deck/category weighting, normal scoring. Only in-game status is the inline READY/FAIL/RUN/WAIT badge; old content is not successful current-day generation. HTML review is accepted; don't redesign its report.
 
 Attention, not strict novelty, is the goal. No cross-day suppression. Current collector still uses general r/popular/hot, NOT news-specific ranking: one 100-post snapshot, at most ten article candidates, four discussion requests, two NWS requests. Two distinct usable headlines required before writing. Visible reporting stabilizes for one second within a 15-second polling budget; publication <=72h, 800+ characters. No paywall/challenge bypasses. URL/title/slug dedup is heuristic, not semantic classification. Keep this behavior unchanged unless requested.
 
 # Verification
+Short-title/identity build and full offline suite pass, including 40/60/80/120-column unclipped headers, PTY gameplay/restart, structured-response validation, one-call generation, raw failure retention and old prose-only replay. No live model calls yet.
+
 Build/full suite pass; LSP clean. Time tests cover midnight/year rollover, both DST transitions, timezone-independent scheduling consistency, saved attempt/pack/state/source/report offsets, localized review and original raw JSON. HTTP tests cover exact renderer reuse, history/new-file/pending-final selection, corrupt records/raw inspection, archive isolation, read-only behavior, Host/Origin and path/symlink rejection. Real browser dropdown checks passed; all runtime JSON/HTML hashes unchanged. User-service and tailnet Host acceptance verified locally. No owned test browser tabs intentionally left open.
 
 # Open Problems

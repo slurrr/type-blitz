@@ -105,7 +105,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 10));
     inflight--;
     if (call === failCall) throw new Error('fixture provider failure');
-    return { model, thinking: 'low', text, audit: { ...request, tools: [], messageRoles: ['user'], payloadVerified: true, reasoningEffort: 'low' } };
+    return { model, thinking: 'low', text: JSON.stringify({ title: 'Keeping the library open', name: 'Alex', descriptor: 'Queens, NY', text }), audit: { ...request, tools: [], messageRoles: ['user'], payloadVerified: true, reasoningEffort: 'low' } };
   } };
   const deps: DailyDependencies = {
     now: () => clock,
@@ -144,6 +144,7 @@ try {
   assert.equal(first.error, undefined);
   assert.equal(first.pack!.entries.length, DAILY_PASSAGE_COUNT);
   assert.equal(first.pack!.version, 2);
+  assert.ok(first.pack!.entries.every(e => e.passage.title === 'Keeping the library open' && e.passage.author === 'Alex · Queens, NY'));
   assert.equal(first.pack!.generatedAt, '2026-10-14T14:00:00.000-06:00');
   assert.equal(JSON.parse(await readFile(join(dir, 'state.json'), 'utf8')).startedAt, first.pack!.generatedAt);
   assert.equal(maxInflight, DAILY_PASSAGE_COUNT, 'model calls run concurrently');

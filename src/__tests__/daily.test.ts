@@ -141,7 +141,8 @@ try {
       assert.equal(options.cacheRetention, 'none');
       assert.equal(options.toolChoice, 'none');
       options.onPayload(payload({ systemPrompt: context.systemPrompt, userPrompt: context.messages[0].content }));
-      return { stopReason: 'stop', provider: model.provider, model: model.id, content: [{ type: 'text', text: prose }] };
+      return { stopReason: 'stop', provider: model.provider, model: model.id, content: [{ type: 'text',
+        text: JSON.stringify({ title: 'Repairing together', name: 'Simon', descriptor: 'Kilgore, TX', text: prose }) }] };
     }
   };
   const writer = makePiWriter(runtime, 'test-model');

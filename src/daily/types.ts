@@ -56,6 +56,8 @@ export const THINKING_LEVELS = ['off', 'low', 'medium', 'high', 'xhigh'] as cons
 export type ThinkingLevel = typeof THINKING_LEVELS[number];
 
 export interface WriterRequest {
+  /** Absent on historical plain-prose requests; replay preserves the saved contract. */
+  outputFormat?: 'passage-presentation-v1';
   systemPrompt: string;
   userPrompt: string;
 }

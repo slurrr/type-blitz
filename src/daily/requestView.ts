@@ -61,6 +61,7 @@ summary{cursor:pointer;font-weight:600}details{margin-top:1rem}.muted{opacity:.7
 <section><h2>At a glance</h2>${fields({
     archive, status: attempt.status, model: attempt.model, thinking: attempt.thinking,
     createdAt: attempt.createdAt, timeZone: DAILY_TIME_ZONE, elapsedMs: attempt.elapsedMs ?? 'Not recorded',
+    ...(attempt.request.outputFormat && attempt.passage ? { passageTitle: attempt.passage.title, fictionalSpeaker: attempt.passage.author } : {}),
     voice: attempt.voice, execution: attempt.execution, rating: review?.rating ?? 'unrated',
     ...(review?.note ? { reviewNote: review.note } : {}),
     ...(attempt.replayOf ? { replayOf: attempt.replayOf } : {}),

@@ -131,7 +131,7 @@ export function createReviewServer(options: ReviewServerOptions) {
             const { value } = await readSaved(directory, file.key);
             if (kind === 'attempts') {
               const a = asAttempt(value, file.key);
-              file.label = `#${String(a.attemptId).padStart(3, '0')} · ${displayTimestamp(a.createdAt)} · ${a.label} · ${a.source.title}${a.status !== 'ready' ? ' [' + a.status + ']' : ''}`;
+              file.label = `#${String(a.attemptId).padStart(3, '0')} · ${displayTimestamp(a.createdAt)} · ${a.passage?.author ?? a.label} · ${a.passage?.title ?? a.source.title}${a.status !== 'ready' ? ' [' + a.status + ']' : ''}`;
             } else if (kind === 'collection') {
               const r = value as { startedAt?: string; status?: string };
               file.label = `${displayTimestamp(r.startedAt ?? '')} · ${r.status ?? 'unknown'} · ${file.key}`;

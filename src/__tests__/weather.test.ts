@@ -140,7 +140,7 @@ try {
   const extended = await buildWeatherRequest(frozen, 'forecast-positive', 'extended');
   assert.ok(extended.userPrompt.includes('Sunday Night'));
   const writer: Writer = { model: 'fixture', thinking: 'off', async generate(request) {
-    return { model: 'fixture', thinking: 'off', text: 'Helena is still cold enough to make the melting snow feel like a technicality rather than a victory. There is less white on the ground, but the jacket remains firmly employed. For now, the improvement is mostly something you can point at through a window.',
+    return { model: 'fixture', thinking: 'off', text: JSON.stringify({ title: 'Cold despite the thaw', name: 'Lilly', descriptor: 'College student', text: 'Helena is still cold enough to make the melting snow feel like a technicality rather than a victory. There is less white on the ground, but the jacket remains firmly employed. For now, the improvement is mostly something you can point at through a window.' }),
       audit: { ...request, tools: [], messageRoles: ['user'], payloadVerified: true, reasoningEffort: 'none' } };
   } };
   const seed = await seedFromWeather(frozen, 'reaction-positive');

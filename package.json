@@ -32,7 +32,7 @@
     "game": "node dist/index.js",
     "effects:demo": "tsx src/effectsDemo.ts",
     "daily:preview": "tsx src/dailyPreview.ts",
-    "test": "tsx src/__tests__/engine.test.ts && tsx src/__tests__/navigation.test.ts && tsx src/__tests__/renderer.test.ts && tsx src/__tests__/effects.test.ts && tsx src/__tests__/scores.test.ts && tsx src/__tests__/audio.test.ts && tsx src/__tests__/daily.test.ts && tsx src/__tests__/dailyHistory.test.ts && tsx src/__tests__/weather.test.ts && tsx src/__tests__/headlines.test.ts && tsx src/__tests__/dailySession.test.ts && tsx src/__tests__/requestView.test.ts && tsx src/__tests__/collectionReliability.test.ts && tsx src/__tests__/reviewServer.test.ts && tsx src/__tests__/dailyTime.test.ts"
+    "test": "tsx src/__tests__/engine.test.ts && tsx src/__tests__/navigation.test.ts && tsx src/__tests__/renderer.test.ts && tsx src/__tests__/effects.test.ts && tsx src/__tests__/scores.test.ts && tsx src/__tests__/audio.test.ts && tsx src/__tests__/daily.test.ts && tsx src/__tests__/dailyHistory.test.ts && tsx src/__tests__/weather.test.ts && tsx src/__tests__/headlines.test.ts && tsx src/__tests__/dailySession.test.ts && tsx src/__tests__/requestView.test.ts && tsx src/__tests__/collectionReliability.test.ts && tsx src/__tests__/reviewServer.test.ts && tsx src/__tests__/dailyTime.test.ts && tsx src/__tests__/presentation.test.ts"
   },
   "keywords": [
     "tui",

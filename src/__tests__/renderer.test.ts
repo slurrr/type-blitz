@@ -36,7 +36,18 @@ function runRendererTests() {
 
   for (const columns of [40, 60, 80, 120]) {
     Object.defineProperty(process.stdout, 'columns', { value: columns, configurable: true });
+    const title = "Jordan's rigged bets";
+    const author = 'Karen · Harvard undergrad';
+    const identityHeader = renderHeader(title, author);
+    const readableHeader = stripAnsi(identityHeader.join('\n')).replace(/[╔╗║═]/g, ' ').replace(/\s+/g, ' ');
+    assert.ok(readableHeader.includes(title), 'meaningful title is not clipped');
+    assert.ok(readableHeader.includes(author), 'speaker and descriptor are not clipped');
+    const longAuthor = 'Christopher Montgomery · Neighborhood radio presenter';
+    const wideMetadata = renderHeader('An extended outlook for Helena', longAuthor);
+    const allMetadata = stripAnsi(wideMetadata.join('\n')).replace(/[╔╗║═]/g, ' ').replace(/\s+/g, ' ');
+    assert.ok(allMetadata.includes(longAuthor), 'long byline wraps rather than truncating');
     const screens = [
+      identityHeader, wideMetadata,
       renderHeader('A Tale of Two Cities', 'Charles Dickens'),
       renderFooter('[J/K, ↑/↓] MOVE | [L/ENTER/SPACE] SELECT | [Q] QUIT'),
       renderFooter('[J/K, ↑/↓] MOVE | [L/ENTER] START | [H/ESC] BACK'),
