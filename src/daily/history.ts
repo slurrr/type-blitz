@@ -1,3 +1,4 @@
+import { localTimestamp } from './time.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { link, mkdir, open, readFile, readdir, unlink } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -102,7 +103,7 @@ async function reserveAttempt(
     version: 1, attemptId: id, voice: seed.voice, label: ALL_VOICES[seed.voice],
     sourceId: seed.sourceId, source: structuredClone(seed.source), promptId: promptId(seed.request),
     request: structuredClone(seed.request), replayOf: seed.replayOf, execution,
-    createdAt: new Date().toISOString(), model: writer.model, thinking: writer.thinking, status: 'pending'
+    createdAt: localTimestamp(), model: writer.model, thinking: writer.thinking, status: 'pending'
   };
   // If interrupted, this record survives. A later run gets a NEW ID; nothing resumes automatically.
   await writeOnce(join(directory, 'attempts', attemptName(id, seed.voice) + '.pending.json'), attempt);
@@ -215,7 +216,7 @@ export async function markAttempt(directory: string, id: number, rating: Rating 
   await getAttempt(directory, id);
   if (rating !== undefined && !RATINGS.includes(rating)) throw new Error('Rating must be good, mid, bad or unrated.');
   const reviews = await readReviews(directory);
-  reviews[String(id)] = { rating, note: note ?? reviews[String(id)]?.note ?? '', updatedAt: new Date().toISOString() };
+  reviews[String(id)] = { rating, note: note ?? reviews[String(id)]?.note ?? '', updatedAt: localTimestamp() };
   await saveJson(join(directory, 'reviews.json'), reviews);
 }
 export function reviewAttempts(attempts: Attempt[], reviews: Reviews, includeMid = false): Attempt[] {

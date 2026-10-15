@@ -1,3 +1,4 @@
+import { localTimestamp } from './time.js';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { writeOnce } from './history.js';
@@ -20,16 +21,16 @@ export async function traceCollection<T>(
 ): Promise<T> {
   await mkdir(join(directory, 'collection'), { recursive: true });
   const events: (CollectionEvent & { at: string })[] = [];
-  const startedAt = new Date().toISOString();
+  const startedAt = localTimestamp();
   let failure: string | undefined;
   try {
-    return await operation(event => events.push({ ...event, at: new Date().toISOString() }));
+    return await operation(event => events.push({ ...event, at: localTimestamp() }));
   } catch (error) {
     failure = cleanText(error instanceof Error ? error.message : String(error), 2000);
     throw error;
   } finally {
     await writeOnce(collectionReportPath(directory, id), {
-      version: 1, runId: id, startedAt, finishedAt: new Date().toISOString(),
+      version: 1, runId: id, startedAt, finishedAt: localTimestamp(),
       status: failure === undefined ? 'ready' : 'error', error: failure, events
     });
   }

@@ -137,6 +137,37 @@ when available. A source-only check does **not** turn a failed daily run into RE
 See [daily module details](src/daily/README.md) and the runtime `daily/README.md` for
 history and interrupted-lock recovery.
 
+## Browse saved data in the browser
+
+Open **[Type-Blitz review](http://poopship.tail4eec74.ts.net:19829/)** over Tailscale
+(IP alternative: `http://100.81.85.68:19829/`). The user service
+`type-blitz-review.service` serves the existing game and voice-preview archives.
+
+Choose **Archive → Saved data → Record**. Passages use the exact existing HTML
+request renderer, including expandable prompts/output/audit. All older attempts,
+failed/pending records and voice experiments are selectable. Newer/Older links
+step through the list; **Reload list / open** reads newly saved files without
+restarting or exporting pages. App timestamps use **America/Denver** with the
+correct daylight-saving offset, matching the daily-run date. Older UTC records
+are displayed locally without rewriting their saved JSON.
+
+Other categories expose collection reports (including failures), packs, source
+packets and saved status/context/reviews. **Saved JSON** opens the original file;
+**Open full view** opens the report outside the embedded pane. A malformed record
+is marked unreadable without hiding other records; its raw file remains available.
+Only configured archive data is served—not arbitrary filesystem paths or credentials.
+
+This is strictly read-only: no model calls, source collection, ratings edits,
+writer locks, generated HTML files or gameplay changes. Network access follows the
+existing Tailscale/firewall policy; it has no separate login and must not be exposed
+publicly. Host/Origin checks, escaped data and a script-disabled report frame remain
+in place. See [service deployment](systemd/README.md) for lifecycle/access details.
+
+Foreground alternative: `type-blitz review` (defaults to `0.0.0.0:19829`), with
+`--host`, `--port` and explicit `--allow-host` options. Game archive selection still
+uses the global `--daily-dir`; preview selection uses `TYPE_BLITZ_DAILY_DIR`.
+The CLI exports below remain unchanged.
+
 ## Inspect an archived request
 
 ```bash

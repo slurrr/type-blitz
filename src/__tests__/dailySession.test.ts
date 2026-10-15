@@ -87,6 +87,9 @@ assert.equal(opened, 3, 'one feed and two articles');
 assert.equal(discussions, 4, 'exactly four bounded discussions');
 assert.deepEqual(collected.buzz.map(b => b.post.id), ['p2', 'p3']);
 assert.equal(tabs.size, 0);
+assert.equal(collected.buzz[0].fetchedAt, '2026-10-14T14:00:00.000-06:00');
+assert.equal(collected.headlines.fetchedAt, '2026-10-14T14:00:00.000-06:00');
+assert.equal(collected.headlines.stories[0].article.fetchedAt, '2026-10-14T14:00:00.000-06:00');
 failBuzz = true; discussions = 0;
 await assert.rejects(() => collectDailyReddit(command, () => clock.getTime()), /429/);
 assert.equal(discussions, 3, 'stop at first rate limit, no alternate discussion');
@@ -141,6 +144,8 @@ try {
   assert.equal(first.error, undefined);
   assert.equal(first.pack!.entries.length, DAILY_PASSAGE_COUNT);
   assert.equal(first.pack!.version, 2);
+  assert.equal(first.pack!.generatedAt, '2026-10-14T14:00:00.000-06:00');
+  assert.equal(JSON.parse(await readFile(join(dir, 'state.json'), 'utf8')).startedAt, first.pack!.generatedAt);
   assert.equal(maxInflight, DAILY_PASSAGE_COUNT, 'model calls run concurrently');
   assert.equal(collections, 1); assert.equal(calls, DAILY_PASSAGE_COUNT); assert.equal(setups, 1);
   const historyBefore = await listAttempts(dir);
@@ -207,6 +212,8 @@ try {
   assert.ok(diagnosticPath);
   const diagnostic = JSON.parse(await readFile(diagnosticPath, 'utf8'));
   assert.equal(diagnostic.status, 'error');
+  assert.match(diagnostic.startedAt, /-0[67]:00$/);
+  assert.match(diagnostic.finishedAt, /-0[67]:00$/);
   assert.equal(diagnostic.error, 'browser unavailable', 'real generation path archives pre-writing collection failures');
   const failedState = JSON.parse(await readFile(join(dir, 'state.json'), 'utf8'));
   await writeFile(join(dir, 'state.json'), JSON.stringify({ ...failedState, error: '' }));

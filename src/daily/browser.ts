@@ -1,3 +1,4 @@
+import { localTimestamp } from './time.js';
 import { spawn } from 'node:child_process';
 import { mkdtemp, open, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -78,7 +79,7 @@ export async function collectReddit(command: BrowserCommand = browserCommand): P
       return await r.json();
     })()`;
     const thread = await command(['eval', script, '--tab', tab]);
-    return makePacket(post, extractComments(thread.result, post.id), new Date().toISOString());
+    return makePacket(post, extractComments(thread.result, post.id), localTimestamp());
   } finally {
     await command(['close', '--tab', tab]);
   }

@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { getAttempt, readReviews } from './history.js';
 import type { Attempt, Review } from './types.js';
+import { APP_TIMESTAMP_FIELDS, DAILY_TIME_ZONE, displayTimestamp } from './time.js';
 
 function escapeHtml(value: unknown): string {
   return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]!);
@@ -21,7 +22,7 @@ function fields(value: unknown, depth = 0): string {
     ? `<ol>${value.map(item => `<li>${fields(item, depth + 1)}</li>`).join('')}</ol>`
     : '<span class="muted">Empty list</span>';
   return `<dl>${Object.entries(value).map(([key, item]) =>
-    `<div><dt>${escapeHtml(label(key))}</dt><dd>${fields(item, depth + 1)}</dd></div>`).join('')}</dl>`;
+    `<div><dt>${escapeHtml(label(key))}</dt><dd>${fields(APP_TIMESTAMP_FIELDS.has(key) && typeof item === 'string' ? displayTimestamp(item) : item, depth + 1)}</dd></div>`).join('')}</dl>`;
 }
 
 function readableInput(input: string): string {
@@ -59,7 +60,7 @@ summary{cursor:pointer;font-weight:600}details{margin-top:1rem}.muted{opacity:.7
 <p>${escapeHtml(attempt.source.title)}</p></header>
 <section><h2>At a glance</h2>${fields({
     archive, status: attempt.status, model: attempt.model, thinking: attempt.thinking,
-    createdAt: attempt.createdAt, elapsedMs: attempt.elapsedMs ?? 'Not recorded',
+    createdAt: attempt.createdAt, timeZone: DAILY_TIME_ZONE, elapsedMs: attempt.elapsedMs ?? 'Not recorded',
     voice: attempt.voice, execution: attempt.execution, rating: review?.rating ?? 'unrated',
     ...(review?.note ? { reviewNote: review.note } : {}),
     ...(attempt.replayOf ? { replayOf: attempt.replayOf } : {}),
@@ -82,6 +83,20 @@ ${fields({ promptFingerprint: attempt.promptId, sourceFingerprint: attempt.sourc
       : { audit: 'No response audit recorded.' }) })}
 <details><summary>Complete archived record</summary>${prose(JSON.stringify(attempt, null, 2))}</details></section>
 </body></html>\n`;
+}
+
+/** Related saved data, using the same escaped field presentation; no scripts or resource loads. */
+export function renderSavedDataHtml(title: string, value: unknown): string {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>${escapeHtml(title)}</title><style>
+:root{color-scheme:light dark;font:16px/1.6 system-ui,sans-serif}body{max-width:960px;margin:2rem auto;padding:0 1.25rem}
+h1{font-size:1.3rem;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:.5rem 0}pre code{font:inherit}
+dt,summary{font-weight:600}dd{margin:.2rem 0 1rem}dl dl,ol{border-left:2px solid #8884;padding-left:1.25rem}
+summary{cursor:pointer}.muted{opacity:.7}
+</style></head><body><h1>${escapeHtml(title)}</h1><p class="muted">Saved archive data · read only · App timestamps: ${DAILY_TIME_ZONE}; original JSON below</p>
+${fields(value)}<details><summary>Complete saved JSON</summary>${prose(JSON.stringify(value, null, 2))}</details></body></html>`;
 }
 
 /** Only derived views are replaced. Immutable requests, ratings and game state are never written. */

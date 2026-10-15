@@ -335,6 +335,29 @@ metadata comes from their saved input, not the current context. Execution defaul
 to unknown; the initial batch in this project was known to be parallel. The preserved
 legacy files are never written again by the new CLI. No credentials are archived.
 
+## Read-only browser review
+
+`type-blitz review` presents saved records directly in a browser, without an export
+step. The archive/category/record dropdowns list all attempts (numeric newest-first,
+including failed/pending), collection diagnostics, packs, per-run sources and
+allowlisted top-level status/context/review JSON. Selecting a passage calls the
+existing renderAttemptHtml function verbatim. Other JSON uses the same escaped
+field renderer. Reloading the list sees new files; final records supersede pending
+ones. Older/Newer navigation and direct saved-JSON/full-view links are available.
+
+The HTTP adapter has no generation/collection/mutation endpoints. It never takes
+the writer lock or writes reports/archives. GET/HEAD only, no-store responses,
+Host/Origin validation, same-origin framing, sandboxed script-free report content,
+128 KB record limits, and manifest/realpath containment prevent arbitrary file
+access. Symlinked archive children are not traversed; root config is operator-owned.
+A corrupt record doesn't hide the rest of the catalog and its raw bytes can still
+be inspected. Labels are cached by mtime, not the record contents.
+
+Defaults: bind 0.0.0.0:19829, daily game runtime and separate preview runtime.
+Workstation deployment uses existing Tailscale/firewall access, not public hosting
+or a new authentication system. All admitted clients can read these personal
+archives. See ../../systemd/README.md and the root README for the live URL and unit.
+
 ## Readable request export
 
 `type-blitz request ID` renders a single daily-game attempt into
@@ -380,6 +403,8 @@ covered by regression tests. Three-digit filenames are minimum padding, not a ca
 - `collectionReport.ts` / `collectionCheck.ts`: immutable per-collection diagnostic
   events, including failed collection before any writing; explicit source-only checks.
 - `requestView.ts`: one-attempt HTML renderer/export and `type-blitz request ID` command; no generation.
+- `reviewServer.ts` / `reviewShell.ts`: read-only archive file selection and browser shell;
+  existing request HTML is embedded unchanged, no batch exports or writes.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
   A request contains shared + only its voice. No other voice's instructions/results.
@@ -456,6 +481,14 @@ rewriting or automatic quality rating. All prior attempts and packs remain avail
 Preview inspection/review commands can target this directory with `--dir`.
 New packs use version 2 (16 entries); original version-1 packs (eight entries) remain
 readable for history/failure fallback, without rewriting them or silently refetching.
+
+New app-owned timestamps (attempts, packs, state, collection events, source retrieval,
+weather snapshots/user reports and ratings) are ISO 8601 in **America/Denver**, with
+milliseconds and the applicable `-06:00` / `-07:00` offset. The scheduling zone and
+timestamp formatter share one constant; neither depends on the server/browser's
+local timezone. Existing immutable JSON and publisher/NWS timestamps are preserved.
+Review pickers and readable app-timestamp fields localize old UTC records; exact
+request/JSON sections remain verbatim. No model calls or history migration are needed.
 
 The day key is **America/Denver**, not UTC or a rolling TTL. One automatic attempt
 per launch-day, persisted before network work; failures/interruption also consume

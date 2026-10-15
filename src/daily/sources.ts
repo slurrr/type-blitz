@@ -1,3 +1,4 @@
+import { localTimestamp } from './time.js';
 import { browserCommand, readFeedDocument, type BrowserCommand } from './browser.js';
 import { collectHeadlines } from './headlineBrowser.js';
 import { HEADLINE_FEED_URL, HEADLINE_POST_LIMIT, sameCoverage, type HeadlinesPacket } from './headlines.js';
@@ -39,7 +40,7 @@ export async function collectDailyReddit(
         return await r.json();
       })()`;
       const thread = await command(['eval', script, '--tab', tab]);
-      const packet = makePacket(post, extractComments(thread.result, post.id), new Date(now()).toISOString());
+      const packet = makePacket(post, extractComments(thread.result, post.id), localTimestamp(new Date(now())));
       packet.feed = HEADLINE_FEED_URL;
       packet.selection = `First two distinct eligible popular/hot topics excluding the selected headlines; same ${HEADLINE_POST_LIMIT}-post discovery snapshot. Two bounded discussion requests; no subreddit allowlist.`;
       observe({ stage: 'buzz', status: 'ready', url: post.permalink, title: post.title,

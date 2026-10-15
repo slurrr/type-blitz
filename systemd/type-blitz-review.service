@@ -1,0 +1,18 @@
+[Unit]
+Description=Type-Blitz read-only archive review
+
+[Service]
+Type=simple
+WorkingDirectory=%h/code/dev/type-blitz
+ExecStart=/usr/bin/node %h/code/dev/type-blitz/dist/index.js --daily-dir %h/runs/type-blitz/daily review --host 0.0.0.0 --port 19829 --allow-host poopship.tail4eec74.ts.net
+Environment=TYPE_BLITZ_DAILY_DIR=%h/runs/type-blitz/daily-preview
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+UMask=0077
+
+[Install]
+WantedBy=default.target

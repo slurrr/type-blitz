@@ -35,6 +35,7 @@ try {
       audit: { ...input, payloadVerified: true, tools: [], messageRoles: ['user'], reasoningEffort: 'low' } };
   } };
   const ready = await withPreviewLock(dir, () => generateAttempt(dir, pending, writer));
+  assert.match(ready.createdAt, /-0[67]:00$/);
   assert.equal(ready.attemptId, 1000, 'pending 999 consumes its ID; next allocation crosses 999 normally');
   assert.equal(attemptName(1000, ready.voice), '1000-headline-reaction');
   assert.equal((await getAttempt(dir, 1000)).passage!.text, text);
@@ -55,6 +56,8 @@ try {
   assert.ok(!/<(?:script|img|iframe|a|link)\b/i.test(html), 'source data never becomes active HTML or remote resources');
   assert.ok(html.includes("default-src 'none'"));
   assert.ok(renderAttemptHtml(pending, dir).includes('Pending record'));
+  assert.ok(renderAttemptHtml(pending, dir).includes('2026-10-14 14:00:00.000-06:00'));
+  assert.ok(renderAttemptHtml(pending, dir).includes('2026-10-14T20:00:00Z'), 'raw historical record remains original');
   assert.ok(renderAttemptHtml(failed, dir).includes('Fixture provider failure &lt;script&gt;bad()&lt;/script&gt;'));
   assert.ok(renderAttemptHtml({ ...pending, request: { ...request, userPrompt: 'An old plain-text request\nwith no JSON.' } }, dir)
     .includes('An old plain-text request\nwith no JSON.'));

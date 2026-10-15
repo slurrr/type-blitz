@@ -1,3 +1,4 @@
+import { localTimestamp } from './time.js';
 import { randomUUID } from 'node:crypto';
 import { access, mkdir } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -135,7 +136,7 @@ export async function ensureDaily(
           : undefined };
       }
       signal.throwIfAborted();
-      const state: DailyState = { version: 1, day, runId: randomUUID(), startedAt: deps.now().toISOString(), status: 'running' };
+      const state: DailyState = { version: 1, day, runId: randomUUID(), startedAt: localTimestamp(deps.now()), status: 'running' };
       // Persist the day BEFORE any network work so failures/relaunches don't hammer sources/models.
       await saveJson(join(directory, 'state.json'), state);
       try {
@@ -162,7 +163,7 @@ export async function ensureDaily(
         const failed = batch.attempts.filter(a => a.status !== 'ready' || !a.passage);
         if (failed.length) throw new Error(`${failed.length}/${plan.length} passages failed; previous pack preserved. ` + failed.map(a => `#${a.attemptId}: ${a.error}`).join('; '));
         const pack = validateDailyPack({
-          version: 2, id: state.runId, day, generatedAt: deps.now().toISOString(), model: writer.model, thinking: writer.thinking,
+          version: 2, id: state.runId, day, generatedAt: localTimestamp(deps.now()), model: writer.model, thinking: writer.thinking,
           entries: batch.attempts.map((a, i) => ({ channel: plan[i].channel, attemptId: a.attemptId,
             passage: { ...a.passage!, genre: 'Daily AI / ' + plan[i].channel } }))
         });

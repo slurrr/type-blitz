@@ -5,6 +5,7 @@ import { navigationKey, MENU_ACTIONS } from './navigation.js';
 import { DailyClient } from './daily/client.js';
 import { dailyDirectory, dailyStatus } from './daily/session.js';
 import { registerRequestView } from './daily/requestView.js';
+import { registerReviewServer } from './daily/reviewServer.js';
 import { checkDailyCollection } from './daily/collectionCheck.js';
 import { LITERARY_PASSAGES, getRandomPassage, getPassageById } from './passages/passages.js';
 import { GameEngine } from './engine/gameEngine.js';
@@ -647,5 +648,6 @@ program
   });
 
 registerRequestView(program);
+registerReviewServer(program);
 
 program.parseAsync(process.argv).catch(error => { console.error(error.message); process.exitCode = 1; });

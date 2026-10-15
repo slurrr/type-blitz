@@ -1,3 +1,4 @@
+import { localTimestamp, DAILY_TIME_ZONE } from './time.js';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { GenerationSeed } from './history.js';
@@ -17,7 +18,7 @@ export function resolveWeatherMode(voice: VoiceId, mode: WeatherSelection = 'aut
   }
   return mode;
 }
-export const HELENA = { name: 'Helena, Montana', latitude: 46.5891, longitude: -112.0391, timeZone: 'America/Denver' };
+export const HELENA = { name: 'Helena, Montana', latitude: 46.5891, longitude: -112.0391, timeZone: DAILY_TIME_ZONE };
 export interface ForecastPeriod {
   name: string; startTime: string; endTime: string; isDaytime: boolean;
   temperature: number; temperatureUnit: 'F' | 'C'; precipitationChance: number | null;
@@ -125,7 +126,7 @@ export async function collectWeather(fetcher: WeatherFetch = fetch, now?: Date):
   const forecast = object(object(await fetchJson(url, fetcher)).properties);
   if (!Array.isArray(forecast.periods) || forecast.periods.length > 14) throw new Error('Invalid NWS periods.');
   return validateWeather({
-    version: 1, kind: 'weather', frozenAt: (now ?? new Date()).toISOString(),
+    version: 1, kind: 'weather', frozenAt: localTimestamp(now),
     location: { ...HELENA, timeZone: text(properties.timeZone, 'time zone', 100) }, reports: [],
     forecast: {
       provider: 'NWS', url, issuedAt: forecast.updated ?? forecast.generatedAt,
@@ -152,9 +153,9 @@ export async function collectWeatherOnce(
 }
 /** User anecdotes are separately attributed and timed; this is NOT a meteorological observation. */
 export async function addWeatherReport(directory: string, report: string, now = new Date()): Promise<WeatherPacket> {
-  const packet = await existingWeather(directory) ?? { version: 1, kind: 'weather', location: { ...HELENA }, frozenAt: now.toISOString(), reports: [] };
+  const packet = await existingWeather(directory) ?? { version: 1, kind: 'weather', location: { ...HELENA }, frozenAt: localTimestamp(now), reports: [] };
   // Capture a new context snapshot; the forecast's own issuedAt remains unchanged.
-  const updated = validateWeather({ ...packet, frozenAt: now.toISOString(), reports: [...packet.reports, { source: 'user', reportedAt: now.toISOString(), text: report }] });
+  const updated = validateWeather({ ...packet, frozenAt: localTimestamp(now), reports: [...packet.reports, { source: 'user', reportedAt: localTimestamp(now), text: report }] });
   await saveJson(join(directory, fileName), updated);
   return updated;
 }

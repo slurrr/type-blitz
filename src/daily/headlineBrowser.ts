@@ -1,3 +1,4 @@
+import { localTimestamp } from './time.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { browserCommand, readFeedDocument, type BrowserCommand } from './browser.js';
 import { HEADLINE_ARTICLE_LIMIT, HEADLINE_FEED_URL, HEADLINE_POST_LIMIT, headlineCandidates, object, publicArticleUrl, sameCoverage, validateArticle, validateHeadlines, type HeadlineArticle, type HeadlinesPacket, type HeadlineStory } from './headlines.js';
@@ -82,7 +83,7 @@ export async function readArticle(
         if (typeof result.reason === 'string') reason = cleanText(result.reason, 300);
         if (result.loading === false) {
           if (result.blocked) throw new Error('Article unavailable: ' + reason);
-          const article = validateArticle({ ...object(result.article), fetchedAt: new Date(now()).toISOString() }, now());
+          const article = validateArticle({ ...object(result.article), fetchedAt: localTimestamp(new Date(now())) }, now());
           const signature = JSON.stringify({ ...article, fetchedAt: undefined });
           if (signature !== fingerprint) { fingerprint = signature; stableSince = Date.now(); }
           if (Date.now() - stableSince >= (timing.stableMs ?? 1000)) return article;
@@ -158,7 +159,7 @@ export async function collectHeadlines(
     }
     if (stories.length !== 2) throw new Error(`Only ${stories.length}/2 usable headlines from ${candidates.length} candidates (budget ${HEADLINE_ARTICLE_LIMIT}, first ${HEADLINE_POST_LIMIT} posts). No packet replaced. ${skipped.map(s => `${new URL(s.url).hostname}: ${s.reason}`).join('; ')}`);
     const packet = validateHeadlines({
-      version: 1, kind: 'headlines', feed: HEADLINE_FEED_URL, fetchedAt: new Date(now()).toISOString(), stories, skipped,
+      version: 1, kind: 'headlines', feed: HEADLINE_FEED_URL, fetchedAt: localTimestamp(new Date(now())), stories, skipped,
       selection: `First two eligible external articles from the first ${HEADLINE_POST_LIMIT} popular/hot posts; at most ${HEADLINE_ARTICLE_LIMIT} candidate reads. Posts: within 72 hours, 20+ comments. Articles: publication date within 72 hours, 800+ characters of visible reporting. Exact URL/title-overlap deduplication, not an editorial or ideological choice.`,
       limitations: [
         'Discovery rank is one public Reddit feed viewed in a real browser; not universal/global attention or guaranteed account/region independent.',
