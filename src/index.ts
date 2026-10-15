@@ -1,7 +1,10 @@
 import readline from 'node:readline';
 import { Command } from 'commander';
 import { Passage, GameState, GameConfig } from './types.js';
-import { navigationKey } from './navigation.js';
+import { navigationKey, MENU_ACTIONS } from './navigation.js';
+import { DailyClient } from './daily/client.js';
+import { DailyDeck, dailyDay, dailyDirectory, dailyStatus } from './daily/session.js';
+import { renderDailyWaitingView } from './renderer/dailyView.js';
 import { LITERARY_PASSAGES, getRandomPassage, getPassageById } from './passages/passages.js';
 import { GameEngine } from './engine/gameEngine.js';
 import { ANSI, Palette, getTerminalDimensions, renderTerminalFrame } from './renderer/ansi.js';
@@ -53,14 +56,20 @@ class TypeBlitzApp {
   private graphics = new KittyEffects();
   private animationTimer?: ReturnType<typeof setInterval>;
   private previousFrame: string[] = [];
+  private daily: DailyClient;
+  private dailyDeck?: DailyDeck;
 
   private initialsInput: string[] = ['A', 'A', 'A'];
   private activeInitialsSlot: number = 0;
 
-  constructor(initialPassageId?: string) {
-    const selected = initialPassageId ? getPassageById(initialPassageId) : undefined;
+  constructor(private options: { passage?: string; daily?: boolean; dailyDir?: string; sound?: boolean } = {}) {
+    const selected = options.passage ? getPassageById(options.passage) : undefined;
     this.currentPassage = selected || getRandomPassage();
+    this.config.soundEnabled = options.sound !== false;
     this.engine = new GameEngine(this.currentPassage, this.config);
+    this.daily = new DailyClient(options.dailyDir, () => {
+      if (this.state === 'MENU' || this.state === 'DAILY_WAIT') this.render();
+    });
   }
 
   public async start(): Promise<void> {
@@ -90,9 +99,13 @@ class TypeBlitzApp {
     startMenuMusic(this.config.soundEnabled);
 
     this.render();
+    if (this.options.daily === false) void this.daily.load();
+    else void this.daily.run();
+    if (this.options.passage && getPassageById(this.options.passage)) void this.startCountdownAndGame();
   }
 
   private cleanupAndExit(): void {
+    this.daily.dispose();
     stopAllAudio();
     clearInterval(this.animationTimer);
     process.stdout.write(this.graphics.clear() + ANSI.showCursor);
@@ -109,7 +122,7 @@ class TypeBlitzApp {
     // Music control per state
     if (!animationOnly && this.state === 'PLAYING') {
       startGameplayMusic(this.config.soundEnabled);
-    } else if (!animationOnly && (this.state === 'MENU' || this.state === 'PASSAGE_SELECT' || this.state === 'HIGH_SCORES' || this.state === 'INITIALS_ENTRY' || this.state === 'CUSTOM_INPUT')) {
+    } else if (!animationOnly && (this.state === 'MENU' || this.state === 'PASSAGE_SELECT' || this.state === 'HIGH_SCORES' || this.state === 'INITIALS_ENTRY' || this.state === 'CUSTOM_INPUT' || this.state === 'DAILY_WAIT')) {
       startMenuMusic(this.config.soundEnabled);
     }
 
@@ -117,7 +130,7 @@ class TypeBlitzApp {
 
     const headerLines = renderHeader(
       this.state === 'PLAYING' || this.state === 'COUNTDOWN' || this.state === 'SUMMARY' || this.state === 'INITIALS_ENTRY'
-        ? this.currentPassage.title
+        ? this.passageTitle()
         : undefined,
       this.currentPassage.author
     );
@@ -129,7 +142,12 @@ class TypeBlitzApp {
 
     switch (this.state) {
       case 'MENU':
-        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled));
+        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled,
+          this.daily.message + (this.daily.busy ? '...' : ''), this.dailyDetail()));
+        break;
+
+      case 'DAILY_WAIT':
+        frameLines.push(...renderDailyWaitingView(this.daily.message, this.dailyDetail(), this.daily.error));
         break;
 
       case 'PASSAGE_SELECT':
@@ -167,9 +185,11 @@ class TypeBlitzApp {
 
     let helpStr = 'TYPE-BLITZ 1984 | 80S RETRO SYNTHWAVE TYPING ENGINE';
     if (this.state === 'PLAYING') {
-      helpStr = 'TYPE THE TEXT AS IT STREAMS | [ESC] PAUSE / MENU | [CTRL+R] RESTART';
+      helpStr = (this.dailyDeck ? `DAILY ${this.dailyDeck.pack.day} ${this.dailyDeck.position}/8` : 'TYPE THE TEXT AS IT STREAMS') + ' | [ESC] MENU | [CTRL+R] RESTART';
     } else if (this.state === 'MENU') {
-      helpStr = '[J/K, ↑/↓] MOVE | [L/ENTER/SPACE] SELECT | [Q] QUIT';
+      helpStr = '[J/K] MOVE | [L/ENTER] SELECT | [R] REFRESH DAILY | [Q] QUIT';
+    } else if (this.state === 'DAILY_WAIT') {
+      helpStr = '[L/ENTER] PLAY SAVED | [R] REFRESH DAILY | [H/ESC] BACK';
     } else if (this.state === 'PASSAGE_SELECT') {
       helpStr = '[J/K, ↑/↓] MOVE | [L/ENTER] START | [H/ESC] BACK';
     } else if (this.state === 'INITIALS_ENTRY') {
@@ -194,6 +214,32 @@ class TypeBlitzApp {
       ? this.graphics.draw(cells, Math.floor(Math.max(0, cols - 2) / 2), headerLines.length + FLAME_ROW_OFFSET + 1, now)
       : this.graphics.clear();
     if (output) process.stdout.write(output);
+  }
+
+  private dailyDetail(): string {
+    const pack = this.daily.pack;
+    const saved = pack ? `${pack.day}${pack.day !== dailyDay() ? ' (OLDER PACK)' : ''} | ${pack.entries.length} passages | Sol 6.1 low` : 'No saved pack yet | Sol 6.1 low';
+    return saved + (this.daily.error ? ' | ' + this.daily.error : '');
+  }
+
+  private passageTitle(): string {
+    return this.dailyDeck ? `DAILY ${this.dailyDeck.position}/8 | ${this.currentPassage.title}` : this.currentPassage.title;
+  }
+
+  private startDaily(): void {
+    if (!this.daily.pack) {
+      this.state = 'DAILY_WAIT';
+      this.render();
+      return;
+    }
+    if (this.dailyDeck?.pack.id !== this.daily.pack.id) this.dailyDeck = new DailyDeck(this.daily.pack);
+    this.currentPassage = this.dailyDeck.current().passage;
+    void this.startCountdownAndGame();
+  }
+
+  private nextPassage(): void {
+    this.currentPassage = this.dailyDeck ? this.dailyDeck.next().passage : getRandomPassage();
+    void this.startCountdownAndGame();
   }
 
   private renderCustomInputView(): string[] {
@@ -229,7 +275,7 @@ class TypeBlitzApp {
 
     await runCountdownSequence((countdownLines) => {
       playCountdownBeep(this.config.soundEnabled);
-      const headerLines = renderHeader(this.currentPassage.title, this.currentPassage.author);
+      const headerLines = renderHeader(this.passageTitle(), this.currentPassage.author);
       const footerLines = renderFooter('GET READY TO TYPE!');
 
       const fullScreen = [...headerLines, ...countdownLines, ...footerLines];
@@ -279,6 +325,12 @@ class TypeBlitzApp {
       case 'CUSTOM_INPUT':
         this.handleCustomTextInput(str, key);
         break;
+
+      case 'DAILY_WAIT':
+        if (key.name === 'escape') { this.state = 'MENU'; this.render(); }
+        else if (key.name === 'r') void this.daily.run(true);
+        else if (key.name === 'return' || key.name === 'space') this.startDaily();
+        break;
     }
   }
 
@@ -313,48 +365,55 @@ class TypeBlitzApp {
 
   private handleMenuInput(key: readline.Key): void {
     if (key.name === 'up') {
-      this.menuSelectedIndex = (this.menuSelectedIndex - 1 + 6) % 6;
+      this.menuSelectedIndex = (this.menuSelectedIndex - 1 + MENU_ACTIONS.length) % MENU_ACTIONS.length;
       playKeypressSound(this.config.soundEnabled);
       this.render();
     } else if (key.name === 'down') {
-      this.menuSelectedIndex = (this.menuSelectedIndex + 1) % 6;
+      this.menuSelectedIndex = (this.menuSelectedIndex + 1) % MENU_ACTIONS.length;
       playKeypressSound(this.config.soundEnabled);
       this.render();
     } else if (key.name === 'return' || key.name === 'space') {
       this.executeMenuAction(this.menuSelectedIndex);
-    } else if (key.name && key.name >= '1' && key.name <= '6') {
+    } else if (key.name && key.name >= '1' && key.name <= String(MENU_ACTIONS.length)) {
       const idx = parseInt(key.name, 10) - 1;
       this.executeMenuAction(idx);
+    } else if (key.name === 'r') {
+      void this.daily.run(true);
     } else if (key.name === 'q') {
       this.cleanupAndExit();
     }
   }
 
   private executeMenuAction(index: number): void {
-    switch (index) {
-      case 0:
+    switch (MENU_ACTIONS[index]) {
+      case 'daily':
+        this.startDaily();
+        break;
+
+      case 'classic':
+        this.dailyDeck = undefined;
         this.currentPassage = getRandomPassage();
         this.startCountdownAndGame();
         break;
 
-      case 1:
+      case 'select':
         this.state = 'PASSAGE_SELECT';
         this.render();
         break;
 
-      case 2:
+      case 'custom':
         this.customTextInput = '';
         this.state = 'CUSTOM_INPUT';
         this.render();
         break;
 
-      case 3:
+      case 'scores':
         this.highScoreScrollOffset = 0;
         this.state = 'HIGH_SCORES';
         this.render();
         break;
 
-      case 4:
+      case 'sound':
         this.config.soundEnabled = !this.config.soundEnabled;
         if (this.config.soundEnabled) {
           startMenuMusic(true);
@@ -364,7 +423,7 @@ class TypeBlitzApp {
         this.render();
         break;
 
-      case 5:
+      case 'exit':
         this.cleanupAndExit();
         break;
     }
@@ -381,6 +440,7 @@ class TypeBlitzApp {
       playKeypressSound(this.config.soundEnabled);
       this.render();
     } else if (key.name === 'return' || key.name === 'space') {
+      this.dailyDeck = undefined;
       this.currentPassage = LITERARY_PASSAGES[this.passageSelectedIndex];
       this.startCountdownAndGame();
     } else if (key.name === 'escape') {
@@ -395,6 +455,7 @@ class TypeBlitzApp {
       this.render();
     } else if (key.name === 'return') {
       if (this.customTextInput.trim().length > 0) {
+        this.dailyDeck = undefined;
         this.currentPassage = {
           id: 'custom',
           title: 'Custom Passage',
@@ -485,8 +546,7 @@ class TypeBlitzApp {
         this.state = 'INITIALS_ENTRY';
         this.render();
       } else {
-        this.currentPassage = getRandomPassage();
-        this.startCountdownAndGame();
+        this.nextPassage();
       }
     } else if (key.name === 'r') {
       this.startCountdownAndGame();
@@ -541,9 +601,12 @@ class TypeBlitzApp {
         grade: gradeInfo.grade
       });
 
-      this.state = 'HIGH_SCORES';
-      startMenuMusic(this.config.soundEnabled);
-      this.render();
+      if (this.dailyDeck) this.nextPassage();
+      else {
+        this.state = 'HIGH_SCORES';
+        startMenuMusic(this.config.soundEnabled);
+        this.render();
+      }
     }
   }
 }
@@ -555,7 +618,12 @@ program
   .version('1.0.0')
   .option('-p, --passage <id>', 'Start directly with specific passage ID')
   .option('-l, --list', 'List all available literature passages')
-  .action((options) => {
+  .option('--daily-refresh', 'Collect fresh sources and generate a daily pack, then exit')
+  .option('--daily-status', 'Show saved daily pack/status without any network calls')
+  .option('--daily-dir <path>', 'Daily game runtime directory (separate from voice previews)', dailyDirectory())
+  .option('--no-daily', 'Skip automatic generation; saved daily packs remain playable')
+  .option('--no-sound', 'Start with sound disabled')
+  .action(async (options) => {
     if (options.list) {
       console.log('\n📚 AVAILABLE LITERATURE PASSAGES:\n');
       LITERARY_PASSAGES.forEach((p) => {
@@ -565,11 +633,24 @@ program
       process.exit(0);
     }
 
-    const app = new TypeBlitzApp(options.passage);
+    if (options.dailyStatus) {
+      console.log(JSON.stringify(await dailyStatus(options.dailyDir), null, 2));
+      return;
+    }
+    if (options.dailyRefresh) {
+      const client = new DailyClient(options.dailyDir, () => console.log(client.message));
+      process.once('SIGINT', () => client.dispose());
+      process.once('SIGTERM', () => client.dispose());
+      const result = await client.run(true);
+      if (result.pack) console.log(`Daily pack available: ${result.pack.day}, ${result.pack.entries.length} passages in ${options.dailyDir}${result.error ? ' (previous pack retained)' : ''}`);
+      if (result.error) { console.error(result.error); process.exitCode = 1; }
+      return;
+    }
+    const app = new TypeBlitzApp(options);
     app.start().catch((err) => {
       console.error('Fatal Error:', err);
       process.exit(1);
     });
   });
 
-program.parse(process.argv);
+program.parseAsync(process.argv).catch(error => { console.error(error.message); process.exitCode = 1; });

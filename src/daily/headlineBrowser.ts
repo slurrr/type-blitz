@@ -69,11 +69,14 @@ export async function readArticle(command: BrowserCommand, url: string, now = ()
 }
 
 /** One discovery navigation; at most six candidate articles and two bounded discussion requests. */
-export async function collectHeadlines(command: BrowserCommand = browserCommand, now = () => Date.now()): Promise<HeadlinesPacket> {
-  const feedTab = ownedTab(await command(['open', FEED_URL]));
+export async function collectHeadlines(
+  command: BrowserCommand = browserCommand, now = () => Date.now(),
+  sharedFeed?: { tab: string; listing: unknown } // Caller owns and closes this tab.
+): Promise<HeadlinesPacket> {
+  const feedTab = sharedFeed?.tab ?? ownedTab(await command(['open', FEED_URL]));
   const stories: HeadlineStory[] = [], skipped: HeadlinesPacket['skipped'] = [];
   try {
-    const candidates = headlineCandidates(await readFeedDocument(command, feedTab), now()).slice(0, 6);
+    const candidates = headlineCandidates(sharedFeed ? sharedFeed.listing : await readFeedDocument(command, feedTab), now()).slice(0, 6);
     for (const post of candidates) {
       if (stories.some(s => sameStory(s.post, post))) {
         skipped.push({ url: post.url, reason: 'Duplicate URL or strongly overlapping discovery headline.' });
@@ -115,5 +118,5 @@ export async function collectHeadlines(command: BrowserCommand = browserCommand,
         'URL/title overlap is only a duplicate heuristic, not proof of distinct events. Readability and publication metadata affect which stories survive.'
       ]
     });
-  } finally { await command(['close', '--tab', feedTab]); }
+  } finally { if (!sharedFeed) await command(['close', '--tab', feedTab]); }
 }

@@ -30,10 +30,11 @@
    - Correct letters ignite, erode into embers, and disappear while the stream keeps its spacing.
    - In Kitty, chunky arcade flame sprites and square embers rise above the text—flat neon colors, no realistic glow.
    - Mistakes become cracked blue ice blocks. `Backspace` clears the error cascade, but correctly typed letters are irreversible once ignited. Trying to erase one plays the wrong-key sound.
-5. **Classic Literature Database**:
+5. **Daily AI Quick Play**: A fresh, saved mix of Helena weather, headline reactions and Reddit buzz, written with **Sol 6.1 low**. Generated on launch once per local day, with explicit refresh and uninterrupted classic play.
+6. **Classic Literature Database**:
    - Passages from *Moby-Dick*, *1984*, *Pride and Prejudice*, *The Great Gatsby*, *Frankenstein*, *Alice's Adventures in Wonderland*, *The Metamorphosis*, *Dracula*, *Dune*, *Fahrenheit 451*, and more.
    - Custom passage input mode (paste your own text).
-6. **Arcade High Scores & Grading**:
+7. **Arcade High Scores & Grading**:
    - Calculates Net WPM, Raw WPM, Accuracy %, Max Streak, and Mistakes.
    - Grades your performance (`S+ CYBER GOD`, `A+ SYNTH SPEEDSTER`, `B TURBO TYPIST`, etc.) and records high scores to `~/.config/type-blitz/highscores.json`.
 
@@ -62,9 +63,53 @@ type-blitz --list
 # Start game directly with a specific passage ID (e.g. 1984, moby-dick, dune)
 type-blitz --passage 1984
 type-blitz --passage dune
+
+# Collect fresh inputs and generate another daily pack, then exit
+type-blitz --daily-refresh
+
+# Inspect the saved pack without network calls
+type-blitz --daily-status
+
+# Play cached daily/classic passages without automatic generation
+type-blitz --no-daily
 ```
 
 ---
+
+## Daily AI mode
+
+The first menu item is **QUICK PLAY (DAILY GEN AI)**. Eight passages interleave:
+- Today's Helena forecast and an extended outlook; the accepted positive/neutral/negative presenters rotate by day.
+- Positive and negative human weather reactions.
+- Two headline reactions, with the accepted synthesis/voice prompts unchanged.
+- Two other Reddit buzz discussions, using the accepted student/blogger/satirist voices in rotation.
+
+All eight use **Sol 6.1 low**, with concurrent isolated calls. Startup checks the
+**America/Denver calendar day** and prepares the pack in a child process while the
+menu/classic game remains responsive. Subsequent launches reuse the saved pack;
+no launch means no calls. No scheduler or silent retries.
+
+Press **R at the main menu** or run **`type-blitz --daily-refresh`** to collect fresh
+sources and generate again, even on the same day. Repeated R presses while busy do
+not queue more runs. Failed refreshes preserve the previous pack and display its
+original date; an older day's pack is explicitly labeled. A failed automatic
+attempt is not retried on every launch: use R when ready to retry.
+
+Daily next/retry stays in Daily, cycling through all eight passages; saving initials
+continues to the next daily passage. Refresh never replaces text mid-round. Classic,
+custom text, scores, sound, fire/ice and typing controls keep their existing behavior.
+
+Runtime: `~/runs/type-blitz/daily/`, separate from voice-preview experiments. Every
+successful pack and every generated attempt is retained with exact prompts/inputs.
+Override with `--daily-dir` or `TYPE_BLITZ_DAILY_GAME_DIR`. Read-only status is available
+with `--daily-status`; `--no-daily` disables automatic work but leaves saved packs and
+explicit refresh available. `--no-sound` starts silently.
+
+Collection requires the workstation's connected **bb-browser** and existing **Pi
+OpenAI/Codex login**. It uses one Reddit popular/hot feed, bounded article/discussion
+reads, and public NWS forecasts—not a hosted crawler or a universal news ranking.
+See [daily module details](src/daily/README.md) and the runtime `daily/README.md` for
+history and interrupted-lock recovery.
 
 ## 🔥 Fire & Ice experiment (Kitty)
 
@@ -121,7 +166,8 @@ audio and standalone daily-preview tests.
 | **L** or **ENTER / SPACE** | Select/open a menu item, start a passage, or continue from results |
 | **H** | Back to the menu from passage selection, high scores or results |
 | **ESC** | Pause / Return to Main Menu |
-| **CTRL + R** | Restart current passage test |
+| **R (main menu / daily waiting screen)** | Explicitly refresh daily sources and generate a new pack |
+| **CTRL + R** | Restart current passage test (no generation) |
 | **Q / CTRL + C** | Exit game |
 
 `hjkl` navigation applies only on navigation screens. During gameplay, custom passage
@@ -133,8 +179,8 @@ the main menu; `l` does nothing on high scores, where there is no forward destin
 
 ## Daily passage voice experiment
 
-A standalone writing preview—no game/menu changes yet. Freeze one Reddit discussion,
-then compare three independent voices using Pi's existing OpenAI/Codex login.
+The standalone writing preview remains available alongside the playable daily mode.
+Freeze one Reddit discussion, then compare three independent voices using Pi's existing OpenAI/Codex login.
 Reddit defaults to **Luna 5.6 / xhigh**. Model calls have no coding-agent prompt or tools.
 Weather experiments have exactly five voices: negative/neutral/positive local forecasters
 and negative/positive human reactions, with separate task inputs. Weather is accepted
@@ -162,7 +208,7 @@ Edit `prompts/daily/{student,blogger,satirist}.md` to change voices. Numbered, i
 attempts and separate quality ratings live in `~/runs/type-blitz/daily-preview/`, not
 Git. No replacement/deletion of earlier attempts. See [the prototype guide](src/daily/README.md)
 for model/thinking options, weather experiments, extraction limits, isolation, and the
-future daily mode. The complete model-selection reading view is
+playable daily mode. The complete model-selection reading view is
 `~/runs/type-blitz/daily-preview/model-comparison.md`.
 
 ## Browser terminal integration

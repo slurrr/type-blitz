@@ -13,7 +13,8 @@ const expected: Record<GameState, string[]> = {
   PAUSED: ['h', 'j', 'k', 'l'],
   CUSTOM_INPUT: ['h', 'j', 'k', 'l'],
   INITIALS_ENTRY: ['h', 'j', 'k', 'l'],
-  COUNTDOWN: ['h', 'j', 'k', 'l']
+  COUNTDOWN: ['h', 'j', 'k', 'l'],
+  DAILY_WAIT: ['escape', 'j', 'k', 'return']
 };
 for (const state of Object.keys(expected) as GameState[]) {
   for (const [index, name] of [...'hjkl'].entries()) {

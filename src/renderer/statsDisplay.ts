@@ -2,6 +2,7 @@ import { GameEngine } from '../engine/gameEngine.js';
 import { Palette, getTerminalDimensions } from './ansi.js';
 import { HighScoreRecord } from '../types.js';
 import { LITERARY_PASSAGES } from '../passages/passages.js';
+import { MENU_ACTIONS } from '../navigation.js';
 import { normalizeFramedLines } from './displayWidth.js';
 
 export function calculateGrade(wpm: number, accuracy: number): { grade: string; title: string } {
@@ -117,19 +118,21 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
   return normalizeFramedLines(result, cols);
 }
 
-export function renderMenuView(selectedIndex: number, soundEnabled: boolean): string[] {
+export function renderMenuView(selectedIndex: number, soundEnabled: boolean, dailyStatus = 'NEON REFLEXES READY // CHOOSE YOUR RUN', dailyDetail?: string): string[] {
   const { cols } = getTerminalDimensions();
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
 
-  const options = [
-    '★ QUICK PLAY (RANDOM CLASSIC LITERATURE)',
-    '◆ SELECT PASSAGE BY AUTHOR / WORK',
-    '▶ ENTER CUSTOM PASSAGE',
-    '❖ ARCADE HIGH SCORES (TOP 100)',
-    `♫ SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
-    '■ EXIT GAME'
-  ];
+  const labels = {
+    daily: '★ QUICK PLAY (DAILY GEN AI)',
+    classic: '★ QUICK PLAY (RANDOM CLASSIC LITERATURE)',
+    select: '◆ SELECT PASSAGE BY AUTHOR / WORK',
+    custom: '▶ ENTER CUSTOM PASSAGE',
+    scores: '❖ ARCADE HIGH SCORES (TOP 100)',
+    sound: `♫ SOUND EFFECTS: [ ${soundEnabled ? Palette.green('ENABLED') : Palette.dim('DISABLED')} ]`,
+    exit: '■ EXIT GAME'
+  };
+  const options = MENU_ACTIONS.map(action => labels[action]);
 
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
   result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
@@ -147,7 +150,8 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean): st
   result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
-  const navHelp = Palette.dim('NEON REFLEXES READY // CHOOSE YOUR RUN');
+  if (dailyDetail) result.push(Palette.neonBorder('║') + Palette.cyan('  ' + dailyDetail) + Palette.neonBorder('║'));
+  const navHelp = Palette.dim(dailyStatus);
   const navPlain = navHelp.replace(/\x1b\[[0-9;]*m/g, '').length;
   const navMargin = Math.max(0, Math.floor((innerWidth - navPlain) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(navMargin) + navHelp + ' '.repeat(Math.max(0, innerWidth - navPlain - navMargin)) + Palette.neonBorder('║'));

@@ -51,7 +51,7 @@ export function verifyPayload(payload: unknown, request: WriterRequest, thinking
   }
 }
 
-export function makePiWriter(runtime: PiRuntime, modelId: string, thinking: ThinkingLevel = DEFAULT_THINKING): Writer {
+export function makePiWriter(runtime: PiRuntime, modelId: string, thinking: ThinkingLevel = DEFAULT_THINKING, signal?: AbortSignal): Writer {
   const model = runtime.getPhysicalModel('openai-codex', modelId);
   if (!model) throw new Error(`Pi has no physical openai-codex/${modelId} model. Choose an available model explicitly.`);
   const name = `${model.provider}/${model.id}`;
@@ -59,6 +59,7 @@ export function makePiWriter(runtime: PiRuntime, modelId: string, thinking: Thin
     model: name,
     thinking,
     async generate(request) {
+      signal?.throwIfAborted();
       let verified = false;
       const context: PiContext = {
         systemPrompt: request.systemPrompt,
@@ -68,7 +69,7 @@ export function makePiWriter(runtime: PiRuntime, modelId: string, thinking: Thin
       // No AgentSession, resource loader, settings, tools, or saved conversations are constructed.
       const response = await runtime.completeSimple(model, context, {
         reasoning: thinking === 'off' ? undefined : thinking, maxTokens: 16384, maxRetries: 0, transport: 'sse',
-        cacheRetention: 'none', toolChoice: 'none', signal: AbortSignal.timeout(300_000),
+        cacheRetention: 'none', toolChoice: 'none', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(300_000)]) : AbortSignal.timeout(300_000),
         onPayload(payload) {
           verifyPayload(payload, request, thinking);
           verified = true;
@@ -101,7 +102,7 @@ export function makePiWriter(runtime: PiRuntime, modelId: string, thinking: Thin
   };
 }
 
-export async function createPiWriter(modelId = DEFAULT_MODEL, thinking: ThinkingLevel = DEFAULT_THINKING): Promise<Writer> {
+export async function createPiWriter(modelId = DEFAULT_MODEL, thinking: ThinkingLevel = DEFAULT_THINKING, signal?: AbortSignal): Promise<Writer> {
   let root = process.env.TYPE_BLITZ_PI_ROOT;
   if (!root) {
     const { stdout } = await promisify(execFile)('npm', ['root', '--global'], { timeout: 10_000 });
@@ -115,5 +116,5 @@ export async function createPiWriter(modelId = DEFAULT_MODEL, thinking: Thinking
     // Use Pi's credential store, not its custom model overlays, resources or agent configuration.
     modelsPath: null, allowModelNetwork: false, refreshOnCreate: false
   });
-  return makePiWriter(runtime, modelId, thinking);
+  return makePiWriter(runtime, modelId, thinking, signal);
 }

@@ -1,11 +1,14 @@
 import type { Key } from 'node:readline';
 import type { GameState } from './types.js';
 
+export const MENU_ACTIONS = ['daily', 'classic', 'select', 'custom', 'scores', 'sound', 'exit'] as const;
+
 const bindings: Partial<Record<GameState, Readonly<Record<string, string>>>> = {
   MENU: { j: 'down', k: 'up', l: 'return' },
   PASSAGE_SELECT: { j: 'down', k: 'up', l: 'return', h: 'escape' },
   HIGH_SCORES: { j: 'down', k: 'up', h: 'escape' },
-  SUMMARY: { l: 'return', h: 'escape' }
+  SUMMARY: { l: 'return', h: 'escape' },
+  DAILY_WAIT: { l: 'return', h: 'escape' }
 };
 
 /** Vim-style aliases only on navigation screens; text entry keeps every letter. */

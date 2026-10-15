@@ -38,7 +38,8 @@ function httpUrl(value: unknown): string {
 }
 
 /** Conservative eligibility, not a semantic quality classifier. Preview the packet before writing. */
-export function selectPost(listing: unknown, now = Date.now()): SourcePost {
+export function eligiblePosts(listing: unknown, now = Date.now()): SourcePost[] {
+  const posts: SourcePost[] = [];
   for (const item of children(listing).slice(0, 25)) {
     const child = object(item);
     const p = object(child.data);
@@ -59,13 +60,18 @@ export function selectPost(listing: unknown, now = Date.now()): SourcePost {
     // A media-only post has no textual context we can inspect. Do not guess from its comments.
     if (media && text.length < 100) continue;
     if (title.length < 70 && text.length < 100) continue;
-    return {
+    posts.push({
       id, title, text, subreddit: cleanText(p.subreddit, 100),
       permalink: new URL(permalink, 'https://www.reddit.com').href,
       url, publishedAt: new Date(number(p.created_utc) * 1000).toISOString(),
       score: number(p.score), commentCount: number(p.num_comments)
-    };
+    });
   }
+  return posts;
+}
+export function selectPost(listing: unknown, now = Date.now()): SourcePost {
+  const post = eligiblePosts(listing, now)[0];
+  if (post) return post;
   throw new Error('No recent, active, text-understandable candidate in the first 25 posts. No extra requests made.');
 }
 
