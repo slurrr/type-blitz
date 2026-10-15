@@ -4,6 +4,7 @@ import { Passage, GameState, GameConfig } from './types.js';
 import { navigationKey, MENU_ACTIONS } from './navigation.js';
 import { DailyClient } from './daily/client.js';
 import { dailyDirectory, dailyStatus } from './daily/session.js';
+import { registerRequestView } from './daily/requestView.js';
 import { LITERARY_PASSAGES, getRandomPassage, getPassageById } from './passages/passages.js';
 import { GameEngine } from './engine/gameEngine.js';
 import { ANSI, Palette, getTerminalDimensions, renderTerminalFrame } from './renderer/ansi.js';
@@ -627,5 +628,7 @@ program
       process.exit(1);
     });
   });
+
+registerRequestView(program);
 
 program.parseAsync(process.argv).catch(error => { console.error(error.message); process.exitCode = 1; });

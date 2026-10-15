@@ -326,6 +326,25 @@ metadata comes from their saved input, not the current context. Execution defaul
 to unknown; the initial batch in this project was known to be parallel. The preserved
 legacy files are never written again by the new CLI. No credentials are archived.
 
+## Readable request export
+
+`type-blitz request ID` renders a single daily-game attempt into
+`<daily runtime>/requests/NNN.html` and prints its path. `--preview` selects the
+separate preview archive; `--stdout` emits HTML without any file writes (including
+for SSH redirection). No automatic batch rendering, server, browser launch, model
+call or source fetch. Saved system/user strings are authoritative, not current prompts.
+JSON-shaped source inputs are displayed as readable fields, paragraphs and nested
+lists; exact messages, raw output and the full record remain available. Output,
+reviews, timing, model/effort, source/prompt fingerprints and payload-audit status are
+included. This is an archived request view, not a raw HTTP capture or hidden reasoning.
+
+Source text is HTML-escaped; there are no scripts, active links/images or external
+assets, and a restrictive CSP disables resource loading. Export files are atomically
+published with mode 0600. Explicit rerender can replace only the derived HTML, not
+an immutable attempt, review or game state. Pending/failed attempts also render.
+IDs are numeric and archive-local; 999→1000→1001 allocation, sorting and lookup are
+covered by regression tests. Three-digit filenames are minimum padding, not a cap.
+
 ## Boundaries
 
 - `reddit.ts`: pure eligibility/cleanup functions. Source claims stay separate from
@@ -349,6 +368,7 @@ legacy files are never written again by the new CLI. No credentials are archived
 - `sources.ts`: shared-feed daily collection: two headlines plus two distinct buzz topics, alongside NWS.
 - `session.ts`: daily recipe, Helena-day gate, immutable packs/source archives; returns ordinary passages for the shared random Quick Play.
 - `worker.ts` / `client.ts`: isolated child generation, IPC progress, coalesced refresh and cancellation; no provider output in the TUI.
+- `requestView.ts`: one-attempt HTML renderer/export and `type-blitz request ID` command; no generation.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
   A request contains shared + only its voice. No other voice's instructions/results.

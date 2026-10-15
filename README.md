@@ -115,6 +115,32 @@ reads, and public NWS forecasts—not a hosted crawler or a universal news ranki
 See [daily module details](src/daily/README.md) and the runtime `daily/README.md` for
 history and interrupted-lock recovery.
 
+## Inspect an archived request
+
+```bash
+type-blitz request 17                 # Render game attempt 017 as a readable HTML file
+type-blitz request 67 --preview       # Use the separate voice-experiment archive
+type-blitz request 17 --stdout       # Emit only HTML; no file writes
+# From another machine, save the view locally:
+ssh <game-host> 'type-blitz request 17 --stdout' > request-017.html
+```
+
+Default output: `~/runs/type-blitz/daily/requests/017.html` (or the selected preview
+archive's `requests/`). The command prints the full path. Open that file in a browser;
+no server, scripts, external assets, model calls or source refreshes are involved.
+Use the existing `--daily-dir` override for other game archives. Preview selection
+respects `TYPE_BLITZ_DAILY_DIR`; IDs are local to each archive, not global.
+
+The view shows the archived instructions, readable nested source material (including
+comments/replies and forecast periods), generated prose, model/effort/timing, ratings
+and verification metadata. Exact input, raw output and the complete saved record are
+expandable. It reads **saved requests**, not today's prompt files or web pages, and
+also handles failed/pending attempts. Only the explicitly requested derived view is
+written/replaced; history, ratings and the playable pool are untouched.
+
+Numbers are attempt IDs, one per model call—not daily-pack IDs. Three-digit padding
+is a minimum: `999` becomes `1000`, then `1001`, with no rollover, deletion or reuse.
+
 ## 🔥 Fire & Ice experiment (Kitty)
 
 Launch normally with `type-blitz` or `npm start`; graphics turn on automatically in a native
@@ -153,6 +179,14 @@ retypes it. Start typing to take over; `Ctrl+R` replays the demo; `Esc` exits.
 - **Fallback:** `TYPE_BLITZ_EFFECTS=ansi npm start` uses text flames and blue ice cells.
   Browser-audio PTYs and tmux default to this path; `TYPE_BLITZ_EFFECTS=kitty` explicitly
   forces graphics where supported. Use at least 20 terminal rows for the full Kitty view.
+
+Over SSH, the **client terminal** must support Kitty graphics. No special Kitty
+configuration was required for the local game. Detection uses `KITTY_WINDOW_ID` or
+`TERM` containing `kitty`; the window ID usually is not forwarded by SSH. If the remote
+shell also reports `TERM=xterm-256color`, automatic detection can fall back to text.
+From a Kitty window, try `kitten ssh <game-host>`, outside tmux, with at least 20 rows.
+`TYPE_BLITZ_EFFECTS=kitty type-blitz` overrides detection for that launch only; it does
+not add graphics support to incompatible terminals. No persistent settings are changed.
 
 After changing source, run `npm run build` to update the `type-blitz` executable's build.
 Run `npm test` for engine, navigation, layout, effect lifecycle/pixels/protocol, score,
