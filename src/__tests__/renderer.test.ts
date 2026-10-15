@@ -5,7 +5,6 @@ import { renderHeader, renderFooter } from '../renderer/retroHeader.js';
 import { renderMenuView, renderPassageSelectView, renderHighScoresView, renderInitialsEntryView, renderSummaryView } from '../renderer/statsDisplay.js';
 import { renderCountdownFrame } from '../renderer/countdown.js';
 import { stripAnsi, visibleWidth } from '../renderer/displayWidth.js';
-import { renderDailyWaitingView } from '../renderer/dailyView.js';
 import { MENU_ACTIONS } from '../navigation.js';
 import { ANSI, renderTerminalFrame } from '../renderer/ansi.js';
 
@@ -42,8 +41,7 @@ function runRendererTests() {
       renderFooter('[J/K, ↑/↓] MOVE | [L/ENTER/SPACE] SELECT | [Q] QUIT'),
       renderFooter('[J/K, ↑/↓] MOVE | [L/ENTER] START | [H/ESC] BACK'),
       renderMenuView(0, true),
-      renderMenuView(0, false, 'Writing passages: 4/8 complete...', '2026-10-14 (OLDER PACK) | 8 passages | Sol 6.1 low'),
-      renderDailyWaitingView('Reading Reddit discussions', 'No saved pack', 'Long error message '.repeat(20)),
+      renderMenuView(0, false),
       renderPassageSelectView(0),
       renderHighScoresView([], 0, 10),
       renderInitialsEntryView(['A', 'A', 'A'], 0, 100),
@@ -63,6 +61,7 @@ function runRendererTests() {
 
   const menuText = stripAnsi(renderMenuView(0, true).join('\n'));
   assert.ok(menuText.includes('NEON REFLEXES READY'));
+  assert.ok(!/Sol|passages|OLDER PACK|Writing/.test(menuText), 'no daily metadata/status decorations');
   assert.ok(menuText.indexOf('QUICK PLAY (DAILY GEN AI)') < menuText.indexOf('RANDOM CLASSIC'));
   assert.deepEqual(MENU_ACTIONS, ['daily', 'classic', 'select', 'custom', 'scores', 'sound', 'exit']);
   assert.ok(!menuText.includes('Use [UP/DOWN]'), 'menu body must not duplicate footer navigation');

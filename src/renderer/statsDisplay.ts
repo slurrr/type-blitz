@@ -118,7 +118,7 @@ export function renderSummaryView(engine: GameEngine, isNewHighScore: boolean): 
   return normalizeFramedLines(result, cols);
 }
 
-export function renderMenuView(selectedIndex: number, soundEnabled: boolean, dailyStatus = 'NEON REFLEXES READY // CHOOSE YOUR RUN', dailyDetail?: string): string[] {
+export function renderMenuView(selectedIndex: number, soundEnabled: boolean): string[] {
   const { cols } = getTerminalDimensions();
   const innerWidth = Math.max(20, cols - 2);
   const result: string[] = [];
@@ -150,8 +150,7 @@ export function renderMenuView(selectedIndex: number, soundEnabled: boolean, dai
   result.push(Palette.neonBorder('║') + ' '.repeat(innerWidth) + Palette.neonBorder('║'));
   result.push(Palette.neonBorder('╠' + '═'.repeat(innerWidth) + '╣'));
 
-  if (dailyDetail) result.push(Palette.neonBorder('║') + Palette.cyan('  ' + dailyDetail) + Palette.neonBorder('║'));
-  const navHelp = Palette.dim(dailyStatus);
+  const navHelp = Palette.dim('NEON REFLEXES READY // CHOOSE YOUR RUN');
   const navPlain = navHelp.replace(/\x1b\[[0-9;]*m/g, '').length;
   const navMargin = Math.max(0, Math.floor((innerWidth - navPlain) / 2));
   result.push(Palette.neonBorder('║') + ' '.repeat(navMargin) + navHelp + ' '.repeat(Math.max(0, innerWidth - navPlain - navMargin)) + Palette.neonBorder('║'));

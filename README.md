@@ -78,26 +78,30 @@ type-blitz --no-daily
 
 ## Daily AI mode
 
-The first menu item is **QUICK PLAY (DAILY GEN AI)**. Eight passages interleave:
-- Today's Helena forecast and an extended outlook; the accepted positive/neutral/negative presenters rotate by day.
-- Positive and negative human weather reactions.
-- Two headline reactions, with the accepted synthesis/voice prompts unchanged.
-- Two other Reddit buzz discussions, using the accepted student/blogger/satirist voices in rotation.
+The first menu item is **QUICK PLAY (DAILY GEN AI)**. Every daily pool uses all voices:
+- Positive, neutral and negative forecasts for **both** today and extended: six passages.
+- Positive and negative human weather reactions: two passages.
+- The accepted headline-reaction voice for each of two stories: two passages.
+- Student, blogger and satirist for **each** of two buzz topics: six passages.
 
-All eight use **Sol 6.1 low**, with concurrent isolated calls. Startup checks the
+All 16 use **Sol 6.1 low**, with concurrent isolated calls. Startup checks the
 **America/Denver calendar day** and prepares the pack in a child process while the
 menu/classic game remains responsive. Subsequent launches reuse the saved pack;
 no launch means no calls. No scheduler or silent retries.
 
 Press **R at the main menu** or run **`type-blitz --daily-refresh`** to collect fresh
 sources and generate again, even on the same day. Repeated R presses while busy do
-not queue more runs. Failed refreshes preserve the previous pack and display its
-original date; an older day's pack is explicitly labeled. A failed automatic
+not queue more runs. Failed refreshes preserve the previous pack; its original date
+and failure details remain inspectable with `--daily-status`. A failed automatic
 attempt is not retried on every launch: use R when ready to retry.
 
-Daily next/retry stays in Daily, cycling through all eight passages; saving initials
-continues to the next daily passage. Refresh never replaces text mid-round. Classic,
-custom text, scores, sound, fire/ice and typing controls keep their existing behavior.
+Both Quick Play modes use the **same random picker and gameplay flow**—only the
+passage pool differs. Each start/Next draws randomly with replacement, just like
+Classic: no ordered deck, category schedule, voice rotation or repeat suppression.
+Retry keeps the current passage; saving initials shows high scores as usual.
+No added model/date/count displays or daily banner/footer decorations. The original
+header, controls, sound, fire/ice and typing renderer are shared. If Daily is selected
+before a pool is available, only the existing menu footer indicates loading/unavailable.
 
 Runtime: `~/runs/type-blitz/daily/`, separate from voice-preview experiments. Every
 successful pack and every generated attempt is retained with exact prompts/inputs.
@@ -166,7 +170,7 @@ audio and standalone daily-preview tests.
 | **L** or **ENTER / SPACE** | Select/open a menu item, start a passage, or continue from results |
 | **H** | Back to the menu from passage selection, high scores or results |
 | **ESC** | Pause / Return to Main Menu |
-| **R (main menu / daily waiting screen)** | Explicitly refresh daily sources and generate a new pack |
+| **R (main menu)** | Explicitly refresh daily sources and generate a new pack |
 | **CTRL + R** | Restart current passage test (no generation) |
 | **Q / CTRL + C** | Exit game |
 

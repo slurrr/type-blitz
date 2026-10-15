@@ -10,7 +10,8 @@ import { validateHeadlines } from '../daily/headlines.js';
 import { makePiWriter } from '../daily/pi.js';
 import { makePacket } from '../daily/reddit.js';
 import { collectDailyReddit, type DailySources } from '../daily/sources.js';
-import { DAILY_MODEL, DailyDeck, dailyDay, dailySeeds, ensureDaily, readDailyPack, validateDailyPack, type DailyDependencies } from '../daily/session.js';
+import { getRandomPassage, LITERARY_PASSAGES } from '../passages/passages.js';
+import { DAILY_MODEL, DAILY_PASSAGE_COUNT, dailyDay, dailySeeds, ensureDaily, readDailyPack, validateDailyPack, type DailyDependencies } from '../daily/session.js';
 import { HELENA } from '../daily/weather.js';
 import type { Writer } from '../daily/types.js';
 import type { BrowserCommand } from '../daily/browser.js';
@@ -108,47 +109,76 @@ try {
     collect: async () => { collections++; return sources(); },
     writer: async () => { setups++; return writer; }
   };
-  const plan = await dailySeeds(sources(), dailyDay(clock));
-  assert.equal(plan.length, 8);
-  assert.deepEqual(plan.map(j => j.channel), ['Weather', 'Headlines', 'Buzz', 'Weather', 'Weather', 'Headlines', 'Buzz', 'Weather']);
-  assert.ok(plan[0].seed.request.userPrompt.includes('"mode": "today"'));
-  assert.ok(plan[4].seed.request.userPrompt.includes('"mode": "extended"'));
-  assert.ok(plan[1].seed.request.systemPrompt.includes('human reaction, not a report'));
-  assert.ok(!plan[3].seed.request.userPrompt.includes('Helena'), 'reaction input is location-free');
-  assert.ok(plan[2].seed.request.userPrompt.includes(titles[2]));
-  assert.ok(!plan[2].seed.request.userPrompt.includes(titles[3]));
-  const voices = new Set<string>();
-  for (const day of ['2026-10-14', '2026-10-15', '2026-10-16']) {
-    const p = await dailySeeds(sources(), day);
-    voices.add(p[0].seed.voice); voices.add(p[2].seed.voice);
+  const plan = await dailySeeds(sources());
+  assert.equal(DAILY_PASSAGE_COUNT, 16);
+  assert.equal(plan.length, DAILY_PASSAGE_COUNT);
+  assert.equal(plan.filter(j => j.channel === 'Weather').length, 8);
+  assert.equal(plan.filter(j => j.channel === 'Headlines').length, 2);
+  assert.equal(plan.filter(j => j.channel === 'Buzz').length, 6);
+  for (const mode of ['today', 'extended']) {
+    const forecasts = plan.filter(j => j.seed.request.userPrompt.includes('"mode": "' + mode + '"'));
+    assert.deepEqual(forecasts.map(j => j.seed.voice), ['forecast-positive', 'forecast-neutral', 'forecast-negative']);
+    assert.equal(new Set(forecasts.map(j => j.seed.request.userPrompt)).size, 1, 'all polarities get the same forecast input');
   }
-  assert.equal(voices.size, 6, 'all three accepted forecast and buzz voices rotate');
+  const reactions = plan.filter(j => j.seed.voice.startsWith('reaction-'));
+  assert.deepEqual(reactions.map(j => j.seed.voice), ['reaction-positive', 'reaction-negative']);
+  assert.ok(reactions.every(j => !j.seed.request.userPrompt.includes('Helena')));
+  const headlines = plan.filter(j => j.channel === 'Headlines');
+  assert.ok(headlines.every(j => j.seed.request.systemPrompt.includes('human reaction, not a report')));
+  for (const title of titles.slice(2)) {
+    const topic = plan.filter(j => j.channel === 'Buzz' && j.seed.request.userPrompt.includes(title));
+    assert.deepEqual(topic.map(j => j.seed.voice), ['student', 'blogger', 'satirist']);
+    assert.equal(new Set(topic.map(j => j.seed.request.userPrompt)).size, 1, 'every buzz voice gets each topic');
+  }
+  const originalClock = clock;
+  for (const day of ['2026-10-14', '2026-10-15', '2026-10-16']) {
+    clock = new Date(day + 'T20:00:00Z');
+    assert.deepEqual((await dailySeeds(sources())).map(j => j.seed.voice), plan.map(j => j.seed.voice), 'all voices every day');
+  }
+  clock = originalClock;
 
   const first = await ensureDaily(dir, {}, deps);
   assert.equal(first.error, undefined);
-  assert.equal(first.pack!.entries.length, 8);
-  assert.equal(maxInflight, 8, 'model calls run concurrently');
-  assert.equal(collections, 1); assert.equal(calls, 8); assert.equal(setups, 1);
+  assert.equal(first.pack!.entries.length, DAILY_PASSAGE_COUNT);
+  assert.equal(first.pack!.version, 2);
+  assert.equal(maxInflight, DAILY_PASSAGE_COUNT, 'model calls run concurrently');
+  assert.equal(collections, 1); assert.equal(calls, DAILY_PASSAGE_COUNT); assert.equal(setups, 1);
   const historyBefore = await listAttempts(dir);
   const firstBytes = await readFile(join(dir, 'current.json'), 'utf8');
   const cached = await ensureDaily(dir, {}, deps);
   assert.equal(cached.reused, true); assert.equal(cached.pack!.id, first.pack!.id);
-  assert.equal(collections, 1); assert.equal(calls, 8); assert.equal(setups, 1);
+  assert.equal(collections, 1); assert.equal(calls, DAILY_PASSAGE_COUNT); assert.equal(setups, 1);
   const refreshed = await ensureDaily(dir, { force: true }, deps);
   assert.notEqual(refreshed.pack!.id, first.pack!.id);
-  assert.equal(collections, 2); assert.equal(calls, 16);
+  assert.equal(collections, 2); assert.equal(calls, 2 * DAILY_PASSAGE_COUNT);
   assert.equal((await readdir(join(dir, 'packs'))).length, 2);
-  assert.deepEqual((await listAttempts(dir)).slice(0, 8), historyBefore, 'old attempts immutable');
+  assert.deepEqual((await listAttempts(dir)).slice(0, DAILY_PASSAGE_COUNT), historyBefore, 'old attempts immutable');
   assert.notEqual(await readFile(join(dir, 'current.json'), 'utf8'), firstBytes);
 
-  const deck = new DailyDeck(first.pack!);
-  for (let i = 0; i < 8; i++) {
-    assert.equal(deck.position, i + 1);
-    assert.equal(deck.current().passage.id, first.pack!.entries[i].passage.id);
-    deck.next();
-  }
-  assert.equal(deck.position, 1, 'cycles only after every passage');
-  assert.equal(deck.pack.id, first.pack!.id, 'playing deck pins its pack across refreshes');
+  const pool = first.pack!.entries.map(e => e.passage);
+  const poolBefore = [...pool];
+  const random = Math.random;
+  try {
+    for (let i = 0; i < pool.length; i++) {
+      Math.random = () => (i + 0.5) / pool.length;
+      assert.equal(getRandomPassage(pool), pool[i], 'every generated passage is reachable by the existing random picker');
+    }
+    for (const i of [15, 2, 15, 0]) {
+      Math.random = () => (i + 0.5) / pool.length;
+      assert.equal(getRandomPassage(pool), pool[i], 'no playlist, no repeat suppression');
+    }
+    Math.random = () => 0.5;
+    assert.equal(getRandomPassage(), LITERARY_PASSAGES[Math.floor(LITERARY_PASSAGES.length / 2)]);
+    assert.deepEqual(pool, poolBefore, 'random selection does not reorder or mutate passages');
+    assert.throws(() => getRandomPassage([]), /No passages/);
+  } finally { Math.random = random; }
+
+  const legacy = { ...first.pack!, version: 1 as const, entries: [
+    ...first.pack!.entries.filter(e => e.channel === 'Weather').slice(0, 4),
+    ...first.pack!.entries.filter(e => e.channel === 'Headlines'),
+    ...first.pack!.entries.filter(e => e.channel === 'Buzz').slice(0, 2)
+  ] };
+  assert.equal(validateDailyPack(legacy).entries.length, 8, 'legacy packs stay readable, not rewritten or deleted');
   assert.throws(() => validateDailyPack({ ...first.pack, entries: first.pack!.entries.slice(1) }), /Invalid daily pack/);
   const poisoned = structuredClone(first.pack!); poisoned.entries[0].passage.title = '\x1b[2Jbad';
   assert.throws(() => validateDailyPack(poisoned), /Invalid daily passage/);
@@ -156,7 +186,7 @@ try {
   failCall = calls + 3;
   const previousBytes = await readFile(join(dir, 'current.json'), 'utf8');
   const failed = await ensureDaily(dir, { force: true }, deps);
-  assert.match(failed.error!, /1\/8 passages failed/);
+  assert.match(failed.error!, /1\/16 passages failed/);
   assert.equal(failed.pack!.id, refreshed.pack!.id);
   assert.equal(await readFile(join(dir, 'current.json'), 'utf8'), previousBytes);
   const before = { collections, calls, setups };
@@ -168,19 +198,19 @@ try {
   const nextDay = await ensureDaily(dir, {}, deps);
   assert.equal(nextDay.error, undefined);
   assert.equal(nextDay.pack!.day, '2026-10-15');
-  assert.equal(calls, 32);
+  assert.equal(calls, 4 * DAILY_PASSAGE_COUNT);
   const collectionFailure = await ensureDaily(dir, { force: true }, { ...deps, collect: async () => { throw new Error('browser unavailable'); } });
   assert.match(collectionFailure.error!, /browser unavailable/);
   assert.equal(collectionFailure.pack!.id, nextDay.pack!.id);
-  assert.equal(calls, 32, 'collection failure makes no model calls');
+  assert.equal(calls, 4 * DAILY_PASSAGE_COUNT, 'collection failure makes no model calls');
   const controller = new AbortController(); controller.abort();
   await ensureDaily(dir, { force: true, signal: controller.signal }, deps);
-  assert.equal(calls, 32);
+  assert.equal(calls, 4 * DAILY_PASSAGE_COUNT);
   const abortDuring = new AbortController();
   const aborted = await ensureDaily(dir, { force: true, signal: abortDuring.signal }, { ...deps,
     collect: async () => { abortDuring.abort(new Error('cancelled fixture')); return sources(); } });
   assert.match(aborted.error!, /cancelled fixture/);
-  assert.equal(calls, 32, 'no writing after collection cancellation');
+  assert.equal(calls, 4 * DAILY_PASSAGE_COUNT, 'no writing after collection cancellation');
   assert.equal(aborted.pack!.id, nextDay.pack!.id);
 
   let release!: () => void, started!: () => void;
@@ -191,14 +221,14 @@ try {
   const loser = await ensureDaily(dir, { force: true }, deps);
   assert.match(loser.error!, /locked/);
   release(); await winner;
-  assert.equal(calls, 40, 'only one competing process/operation spends calls');
+  assert.equal(calls, 5 * DAILY_PASSAGE_COUNT, 'only one competing process/operation spends calls');
   await assert.rejects(() => readFile(join(dir, '.lock')), { code: 'ENOENT' });
 
   const state = await readFile(join(dir, 'state.json'), 'utf8');
   await writeFile(join(dir, 'state.json'), '{bad');
   const broken = await ensureDaily(dir, { force: true }, deps);
   assert.ok(broken.error);
-  assert.equal(calls, 40, 'corrupt state never silently causes network work');
+  assert.equal(calls, 5 * DAILY_PASSAGE_COUNT, 'corrupt state never silently causes network work');
   assert.equal(await readFile(join(dir, 'state.json'), 'utf8'), '{bad');
   await writeFile(join(dir, 'state.json'), state);
 

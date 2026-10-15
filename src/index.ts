@@ -3,8 +3,7 @@ import { Command } from 'commander';
 import { Passage, GameState, GameConfig } from './types.js';
 import { navigationKey, MENU_ACTIONS } from './navigation.js';
 import { DailyClient } from './daily/client.js';
-import { DailyDeck, dailyDay, dailyDirectory, dailyStatus } from './daily/session.js';
-import { renderDailyWaitingView } from './renderer/dailyView.js';
+import { dailyDirectory, dailyStatus } from './daily/session.js';
 import { LITERARY_PASSAGES, getRandomPassage, getPassageById } from './passages/passages.js';
 import { GameEngine } from './engine/gameEngine.js';
 import { ANSI, Palette, getTerminalDimensions, renderTerminalFrame } from './renderer/ansi.js';
@@ -57,7 +56,8 @@ class TypeBlitzApp {
   private animationTimer?: ReturnType<typeof setInterval>;
   private previousFrame: string[] = [];
   private daily: DailyClient;
-  private dailyDeck?: DailyDeck;
+  private passagePool: readonly Passage[] = LITERARY_PASSAGES;
+  private dailyRequested = false;
 
   private initialsInput: string[] = ['A', 'A', 'A'];
   private activeInitialsSlot: number = 0;
@@ -68,7 +68,7 @@ class TypeBlitzApp {
     this.config.soundEnabled = options.sound !== false;
     this.engine = new GameEngine(this.currentPassage, this.config);
     this.daily = new DailyClient(options.dailyDir, () => {
-      if (this.state === 'MENU' || this.state === 'DAILY_WAIT') this.render();
+      if (this.state === 'MENU' && this.dailyRequested) this.render();
     });
   }
 
@@ -122,7 +122,7 @@ class TypeBlitzApp {
     // Music control per state
     if (!animationOnly && this.state === 'PLAYING') {
       startGameplayMusic(this.config.soundEnabled);
-    } else if (!animationOnly && (this.state === 'MENU' || this.state === 'PASSAGE_SELECT' || this.state === 'HIGH_SCORES' || this.state === 'INITIALS_ENTRY' || this.state === 'CUSTOM_INPUT' || this.state === 'DAILY_WAIT')) {
+    } else if (!animationOnly && (this.state === 'MENU' || this.state === 'PASSAGE_SELECT' || this.state === 'HIGH_SCORES' || this.state === 'INITIALS_ENTRY' || this.state === 'CUSTOM_INPUT')) {
       startMenuMusic(this.config.soundEnabled);
     }
 
@@ -130,7 +130,7 @@ class TypeBlitzApp {
 
     const headerLines = renderHeader(
       this.state === 'PLAYING' || this.state === 'COUNTDOWN' || this.state === 'SUMMARY' || this.state === 'INITIALS_ENTRY'
-        ? this.passageTitle()
+        ? this.currentPassage.title
         : undefined,
       this.currentPassage.author
     );
@@ -142,12 +142,7 @@ class TypeBlitzApp {
 
     switch (this.state) {
       case 'MENU':
-        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled,
-          this.daily.message + (this.daily.busy ? '...' : ''), this.dailyDetail()));
-        break;
-
-      case 'DAILY_WAIT':
-        frameLines.push(...renderDailyWaitingView(this.daily.message, this.dailyDetail(), this.daily.error));
+        frameLines.push(...renderMenuView(this.menuSelectedIndex, this.config.soundEnabled));
         break;
 
       case 'PASSAGE_SELECT':
@@ -185,11 +180,11 @@ class TypeBlitzApp {
 
     let helpStr = 'TYPE-BLITZ 1984 | 80S RETRO SYNTHWAVE TYPING ENGINE';
     if (this.state === 'PLAYING') {
-      helpStr = (this.dailyDeck ? `DAILY ${this.dailyDeck.pack.day} ${this.dailyDeck.position}/8` : 'TYPE THE TEXT AS IT STREAMS') + ' | [ESC] MENU | [CTRL+R] RESTART';
+      helpStr = 'TYPE THE TEXT AS IT STREAMS | [ESC] PAUSE / MENU | [CTRL+R] RESTART';
     } else if (this.state === 'MENU') {
-      helpStr = '[J/K] MOVE | [L/ENTER] SELECT | [R] REFRESH DAILY | [Q] QUIT';
-    } else if (this.state === 'DAILY_WAIT') {
-      helpStr = '[L/ENTER] PLAY SAVED | [R] REFRESH DAILY | [H/ESC] BACK';
+      helpStr = this.dailyRequested && !this.daily.pack
+        ? (this.daily.busy ? 'DAILY IS LOADING | CLASSIC PLAY IS AVAILABLE' : 'DAILY UNAVAILABLE | [R] RETRY | CLASSIC PLAY IS AVAILABLE')
+        : '[J/K, ↑/↓] MOVE | [L/ENTER/SPACE] SELECT | [Q] QUIT';
     } else if (this.state === 'PASSAGE_SELECT') {
       helpStr = '[J/K, ↑/↓] MOVE | [L/ENTER] START | [H/ESC] BACK';
     } else if (this.state === 'INITIALS_ENTRY') {
@@ -216,29 +211,18 @@ class TypeBlitzApp {
     if (output) process.stdout.write(output);
   }
 
-  private dailyDetail(): string {
-    const pack = this.daily.pack;
-    const saved = pack ? `${pack.day}${pack.day !== dailyDay() ? ' (OLDER PACK)' : ''} | ${pack.entries.length} passages | Sol 6.1 low` : 'No saved pack yet | Sol 6.1 low';
-    return saved + (this.daily.error ? ' | ' + this.daily.error : '');
-  }
-
-  private passageTitle(): string {
-    return this.dailyDeck ? `DAILY ${this.dailyDeck.position}/8 | ${this.currentPassage.title}` : this.currentPassage.title;
-  }
-
   private startDaily(): void {
     if (!this.daily.pack) {
-      this.state = 'DAILY_WAIT';
+      this.dailyRequested = true;
       this.render();
       return;
     }
-    if (this.dailyDeck?.pack.id !== this.daily.pack.id) this.dailyDeck = new DailyDeck(this.daily.pack);
-    this.currentPassage = this.dailyDeck.current().passage;
-    void this.startCountdownAndGame();
+    this.passagePool = this.daily.pack.entries.map(entry => entry.passage);
+    this.nextPassage();
   }
 
   private nextPassage(): void {
-    this.currentPassage = this.dailyDeck ? this.dailyDeck.next().passage : getRandomPassage();
+    this.currentPassage = getRandomPassage(this.passagePool);
     void this.startCountdownAndGame();
   }
 
@@ -275,7 +259,7 @@ class TypeBlitzApp {
 
     await runCountdownSequence((countdownLines) => {
       playCountdownBeep(this.config.soundEnabled);
-      const headerLines = renderHeader(this.passageTitle(), this.currentPassage.author);
+      const headerLines = renderHeader(this.currentPassage.title, this.currentPassage.author);
       const footerLines = renderFooter('GET READY TO TYPE!');
 
       const fullScreen = [...headerLines, ...countdownLines, ...footerLines];
@@ -325,12 +309,6 @@ class TypeBlitzApp {
       case 'CUSTOM_INPUT':
         this.handleCustomTextInput(str, key);
         break;
-
-      case 'DAILY_WAIT':
-        if (key.name === 'escape') { this.state = 'MENU'; this.render(); }
-        else if (key.name === 'r') void this.daily.run(true);
-        else if (key.name === 'return' || key.name === 'space') this.startDaily();
-        break;
     }
   }
 
@@ -364,6 +342,7 @@ class TypeBlitzApp {
   }
 
   private handleMenuInput(key: readline.Key): void {
+    this.dailyRequested = false;
     if (key.name === 'up') {
       this.menuSelectedIndex = (this.menuSelectedIndex - 1 + MENU_ACTIONS.length) % MENU_ACTIONS.length;
       playKeypressSound(this.config.soundEnabled);
@@ -391,9 +370,8 @@ class TypeBlitzApp {
         break;
 
       case 'classic':
-        this.dailyDeck = undefined;
-        this.currentPassage = getRandomPassage();
-        this.startCountdownAndGame();
+        this.passagePool = LITERARY_PASSAGES;
+        this.nextPassage();
         break;
 
       case 'select':
@@ -440,7 +418,7 @@ class TypeBlitzApp {
       playKeypressSound(this.config.soundEnabled);
       this.render();
     } else if (key.name === 'return' || key.name === 'space') {
-      this.dailyDeck = undefined;
+      this.passagePool = LITERARY_PASSAGES;
       this.currentPassage = LITERARY_PASSAGES[this.passageSelectedIndex];
       this.startCountdownAndGame();
     } else if (key.name === 'escape') {
@@ -455,7 +433,7 @@ class TypeBlitzApp {
       this.render();
     } else if (key.name === 'return') {
       if (this.customTextInput.trim().length > 0) {
-        this.dailyDeck = undefined;
+        this.passagePool = LITERARY_PASSAGES;
         this.currentPassage = {
           id: 'custom',
           title: 'Custom Passage',
@@ -601,12 +579,9 @@ class TypeBlitzApp {
         grade: gradeInfo.grade
       });
 
-      if (this.dailyDeck) this.nextPassage();
-      else {
-        this.state = 'HIGH_SCORES';
-        startMenuMusic(this.config.soundEnabled);
-        this.render();
-      }
+      this.state = 'HIGH_SCORES';
+      startMenuMusic(this.config.soundEnabled);
+      this.render();
     }
   }
 }

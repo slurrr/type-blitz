@@ -347,7 +347,7 @@ legacy files are never written again by the new CLI. No credentials are archived
 - `headlineBrowser.ts`: bounded feed/article/discussion collection and owned-tab cleanup.
 - `headlinesCli.ts`: headline collect/show/generate; user-selected Sol 6.1 low defaults.
 - `sources.ts`: shared-feed daily collection: two headlines plus two distinct buzz topics, alongside NWS.
-- `session.ts`: daily recipe, Helena-day gate, immutable packs/source archives and pinned play-through deck.
+- `session.ts`: daily recipe, Helena-day gate, immutable packs/source archives; returns ordinary passages for the shared random Quick Play.
 - `worker.ts` / `client.ts`: isolated child generation, IPC progress, coalesced refresh and cancellation; no provider output in the TUI.
 - `../dailyPreview.ts`: small CLI composition. Generation never invokes the collector.
 - `../../prompts/daily/`: shared format/source guidance plus independent voice files.
@@ -397,22 +397,30 @@ checks, reporting/discussion separation, caps, ownership/rate-limit aborts, froz
 role isolation, dry-run defaults and immutable replay. Fixtures/fake transports only:
 tests never call Reddit, publishers, NWS or an LLM.
 
-The first menu entry is now **`QUICK PLAY (DAILY GEN AI)`**. Its eight-pass recipe:
-Helena today and extended forecasts (two of the accepted three presenter voices,
-rotating by day), both accepted human weather reactions, two headline reactions,
-and two other Reddit buzz discussions (two of the three accepted original voices,
-rotating by day). Play order interleaves channels. All use **Sol 6.1 low**. Accepted
+The first menu entry is **`QUICK PLAY (DAILY GEN AI)`**. Every daily pool includes
+all accepted voices: positive/neutral/negative forecasts for both today and extended
+(six), positive/negative weather reactions (two), one reaction per headline (two),
+and student/blogger/satirist for each buzz topic (six). **16 passages, no rotation.**
+Both modes call the existing `getRandomPassage(pool)` with equal per-passage probability
+and repeats allowed. No sequential deck, interleaving or category balancing in play.
+The standard renderer, countdown, Next/Retry and initials → high-score flow are shared.
+Mode-specific model/date/count displays, banner/footer decorations and waiting screen
+have been removed. An unavailable pool is indicated only in the existing menu footer
+when the user tries to play it. Technical details stay in `--daily-status`.
+All use **Sol 6.1 low**. Accepted
 prompt files are unchanged; headlines 067/068 were explicitly accepted/marked good.
 Weather presenters include the location; human reactions retain their location-free
 situation input. Fresh daily collection does not carry old experimental user anecdotes.
 
 `session.ts` has a clean dependency-injected boundary: collect → build isolated seeds
-→ eight concurrent writer calls → archive → atomically publish a complete pack.
+→ 16 concurrent writer calls → archive → atomically publish a complete pack.
 It uses the existing immutable attempt format in **`~/runs/type-blitz/daily/`**, not
 the preview directory. Sources live under `sources/<run UUID>/`, complete packs under
 `packs/`, and `current.json` points to the latest playable content. No partial pack,
 rewriting or automatic quality rating. All prior attempts and packs remain available.
 Preview inspection/review commands can target this directory with `--dir`.
+New packs use version 2 (16 entries); original version-1 packs (eight entries) remain
+readable for history/failure fallback, without rewriting them or silently refetching.
 
 The day key is **America/Denver**, not UTC or a rolling TTL. One automatic attempt
 per launch-day, persisted before network work; failures/interruption also consume
@@ -424,7 +432,7 @@ repeated refresh keys in one app are coalesced rather than queued.
 
 **R at the menu**, or `type-blitz --daily-refresh`, deliberately collects fresh sources
 and generates again today. Failure preserves the old pack with its original date;
-older packs are visibly labeled. `--daily-status` reads without network calls.
+`--daily-status` exposes that date and any errors without network calls.
 `--no-daily` suppresses automatic work while allowing cached play and explicit R.
 `--daily-dir` / `TYPE_BLITZ_DAILY_GAME_DIR` override game storage; the preview's
 `TYPE_BLITZ_DAILY_DIR` remains independent. No credentials enter these artifacts.
@@ -438,10 +446,11 @@ readability and source-diversity limitations remain; this is workstation-local,
 not the browser companion's future public-hosting design.
 
 New offline tests cover shared feed reuse/dedup/caps, day boundaries including DST,
-exact recipes/voice rotation, eight-way concurrency, same-day zero-call reuse, forced
+all voices on every input/day, 16-way concurrency, shared random selection (including repeats), same-day zero-call reuse, forced
 refresh, immutable history, failed/partial/cancelled refresh preservation, competing
 writers, corrupted-state refusal, cached child IPC, CLI status/help/list, and a real
-PTY smoke covering daily next/restart, scores, HJKL and classic/custom isolation.
+PTY smoke covering random daily Next/restart, ordinary initials → scores flow,
+absence of model/date/count decorations, HJKL and classic/custom isolation.
 PTY tests use Python 3, fixture passages, isolated scores and `--no-daily --no-sound`.
 
 A crashed `.lock` is not guessed away: inspect its recorded PID and remove only a

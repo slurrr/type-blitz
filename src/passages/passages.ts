@@ -107,9 +107,10 @@ export const LITERARY_PASSAGES: Passage[] = [
   }
 ];
 
-export function getRandomPassage(): Passage {
-  const index = Math.floor(Math.random() * LITERARY_PASSAGES.length);
-  return LITERARY_PASSAGES[index];
+export function getRandomPassage(passages: readonly Passage[] = LITERARY_PASSAGES): Passage {
+  if (!passages.length) throw new Error('No passages available.');
+  const index = Math.floor(Math.random() * passages.length);
+  return passages[index];
 }
 
 export function getPassageById(id: string): Passage | undefined {

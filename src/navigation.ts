@@ -7,8 +7,7 @@ const bindings: Partial<Record<GameState, Readonly<Record<string, string>>>> = {
   MENU: { j: 'down', k: 'up', l: 'return' },
   PASSAGE_SELECT: { j: 'down', k: 'up', l: 'return', h: 'escape' },
   HIGH_SCORES: { j: 'down', k: 'up', h: 'escape' },
-  SUMMARY: { l: 'return', h: 'escape' },
-  DAILY_WAIT: { l: 'return', h: 'escape' }
+  SUMMARY: { l: 'return', h: 'escape' }
 };
 
 /** Vim-style aliases only on navigation screens; text entry keeps every letter. */

@@ -46,5 +46,4 @@ export type GameState =
   | 'INITIALS_ENTRY'
   | 'PASSAGE_SELECT'
   | 'HIGH_SCORES'
-  | 'CUSTOM_INPUT'
-  | 'DAILY_WAIT';
+  | 'CUSTOM_INPUT';

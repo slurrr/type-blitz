@@ -3,6 +3,7 @@ import fcntl
 import json
 import os
 import pty
+import re
 import select
 import struct
 import subprocess
@@ -46,10 +47,11 @@ def send(text):
 
 try:
     expect('QUICK PLAY (DAILY GEN AI)')
-    expect('Saved daily pack ready')
+    expect('NEON REFLEXES READY')
+    time.sleep(0.25)  # Cached input loads asynchronously; no status panel is rendered.
+    assert 'Sol 6.1' not in output and 'passages' not in output
     assert output.index('QUICK PLAY (DAILY GEN AI)') < output.index('QUICK PLAY (RANDOM CLASSIC')
     send('l')
-    expect('DAILY 1/8')
     expect('[CTRL+R] RESTART')
     send(pack['entries'][0]['passage']['text'])
     expect('RUN COMPLETED')
@@ -58,11 +60,37 @@ try:
     send('hjkl')
     time.sleep(0.1)
     send('\r')
-    expect('DAILY 2/8')
+    expect('RANK | TAG')  # Same initials -> high scores flow as Classic.
+    assert 'GET READY TO TYPE' not in output
+    send('h')
+    expect('QUICK PLAY (DAILY GEN AI)')
+    # Keep later fixture rounds out of the top 100 to exercise ordinary Next Passage.
+    score_file = os.path.join(root, 'pty-scores.json')
+    with open(score_file) as f:
+        saved = json.load(f)
+    assert saved[0]['initials'] == 'HJL'
+    with open(score_file, 'w') as f:
+        json.dump([dict(saved[0], id=str(i), wpm=1000000) for i in range(100)], f)
+    send('l')
+    expect('TYPE THE TEXT AS IT STREAMS')
     expect('[CTRL+R] RESTART')
-    send('\x12')  # Ctrl+R restarts this daily passage; it must not advance to the next one.
-    expect('DAILY 2/8')
+    plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
+    header_match = re.search(r'╔[^\r\n]*?SYNTHWAVE \|[^\r\n]*?╗', plain)
+    assert header_match is not None
+    header = header_match.group()
+    assert not re.search(r'DAILY \d+/', plain)
+    assert 'Sol 6.1' not in plain and pack['day'] not in plain
+    send('\x12')  # Ctrl+R keeps this exact randomly chosen passage.
     expect('[CTRL+R] RESTART')
+    assert header in re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output), 'restart must preserve the selected passage header'
+    send(pack['entries'][0]['passage']['text'])
+    expect('RUN COMPLETED')
+    expect('Next Passage')
+    send('l')
+    expect('[CTRL+R] RESTART')
+    plain = re.sub(r'\x1b\[[0-?]*[ -/]*[@-~]', '', output)
+    assert any(e['passage']['title'][:30].upper() in plain for e in pack['entries']), 'Next stays in daily pool'
+    assert not re.search(r'DAILY \d+/', plain)
     send('\x1b')
     expect('QUICK PLAY (DAILY GEN AI)')
     send('3')
@@ -77,7 +105,7 @@ try:
     expect('QUICK PLAY (DAILY GEN AI)')
     send('2')
     expect('TYPE THE TEXT AS IT STREAMS')
-    assert 'DAILY 2/8' not in output, 'classic round must clear the daily deck'
+    assert 'DAILY ' not in output, 'no mode-specific banner decorations'
     send('\x1b')
     expect('QUICK PLAY (DAILY GEN AI)')
     send('q')
@@ -85,7 +113,7 @@ try:
     assert child.returncode == 0
     with open(os.path.join(root, 'pty-scores.json')) as f:
         scores = json.load(f)
-    assert scores[0]['initials'] == 'HJL', 'hjkl remain ordinary initials entry'
+    assert len(scores) == 100 and scores[0]['initials'] == 'HJL', 'ordinary Next must not save an extra high score'
     print('Daily terminal smoke passed: menu, typing, scores, next, restart, HJKL, classic/custom isolation.')
 finally:
     if child.poll() is None:

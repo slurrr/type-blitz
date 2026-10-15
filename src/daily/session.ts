@@ -14,6 +14,7 @@ import { HELENA, seedFromWeather } from './weather.js';
 
 export const DAILY_MODEL = 'gpt-6.1-sol';
 export const DAILY_THINKING = 'low';
+export const DAILY_PASSAGE_COUNT = 16;
 export const dailyDirectory = () => process.env.TYPE_BLITZ_DAILY_GAME_DIR ?? join(homedir(), 'runs/type-blitz/daily');
 export const dailyDay = (now = new Date()) => new Intl.DateTimeFormat('en-CA', {
   timeZone: HELENA.timeZone, year: 'numeric', month: '2-digit', day: '2-digit'
@@ -21,7 +22,7 @@ export const dailyDay = (now = new Date()) => new Intl.DateTimeFormat('en-CA', {
 export type DailyChannel = 'Weather' | 'Headlines' | 'Buzz';
 export interface DailyEntry { channel: DailyChannel; attemptId: number; passage: Passage }
 export interface DailyPack {
-  version: 1; id: string; day: string; generatedAt: string;
+  version: 1 | 2; id: string; day: string; generatedAt: string;
   model: string; thinking: 'low'; entries: DailyEntry[];
 }
 interface DailyState {
@@ -44,9 +45,9 @@ const validDay = (value: unknown): value is string => typeof value === 'string' 
 
 export function validateDailyPack(value: unknown): DailyPack {
   const p = value as DailyPack | null;
-  if (!p || p.version !== 1 || typeof p.id !== 'string' || !/^[\da-f-]{36}$/.test(p.id) ||
+  if (!p || ![1, 2].includes(p.version) || typeof p.id !== 'string' || !/^[\da-f-]{36}$/.test(p.id) ||
       !validDay(p.day) || !validDate(p.generatedAt) || p.model !== 'openai-codex/' + DAILY_MODEL || p.thinking !== 'low' ||
-      !Array.isArray(p.entries) || p.entries.length !== 8) throw new Error('Invalid daily pack; inspect current.json.');
+      !Array.isArray(p.entries) || p.entries.length !== (p.version === 1 ? 8 : DAILY_PASSAGE_COUNT)) throw new Error('Invalid daily pack; inspect current.json.');
   const ids = new Set<string>(), attempts = new Set<number>();
   for (const e of p.entries) {
     const passage = e?.passage;
@@ -59,8 +60,8 @@ export function validateDailyPack(value: unknown): DailyPack {
     }
     ids.add(passage.id); attempts.add(e.attemptId);
   }
-  if (p.entries.filter(e => e.channel === 'Weather').length !== 4 ||
-      p.entries.filter(e => e.channel === 'Headlines').length !== 2 || p.entries.filter(e => e.channel === 'Buzz').length !== 2) {
+  if (p.entries.filter(e => e.channel === 'Weather').length !== (p.version === 1 ? 4 : 8) ||
+      p.entries.filter(e => e.channel === 'Headlines').length !== 2 || p.entries.filter(e => e.channel === 'Buzz').length !== (p.version === 1 ? 2 : 6)) {
     throw new Error('Incomplete daily channel mix.');
   }
   return p;
@@ -85,22 +86,24 @@ export async function dailyStatus(directory: string): Promise<DailyResult> {
 }
 
 /** Accepted prompt files are loaded verbatim. No writer sees another voice's output. */
-export async function dailySeeds(sources: DailySources, day: string): Promise<{ channel: DailyChannel; seed: GenerationSeed }[]> {
-  const rotation = Math.floor(Date.parse(day + 'T12:00:00Z') / 86400_000) % 3;
+export async function dailySeeds(sources: DailySources): Promise<{ channel: DailyChannel; seed: GenerationSeed }[]> {
   const forecasters: VoiceId[] = ['forecast-positive', 'forecast-neutral', 'forecast-negative'];
   const buzzVoices: VoiceId[] = ['student', 'blogger', 'satirist'];
-  const seeds = await Promise.all([
-    seedFromWeather(sources.weather, forecasters[rotation], 'today'),
-    seedFromHeadline(sources.headlines, 0),
-    seedFromPacket(sources.buzz[0], buzzVoices[rotation]),
-    seedFromWeather(sources.weather, 'reaction-positive'),
-    seedFromWeather(sources.weather, forecasters[(rotation + 1) % 3], 'extended'),
-    seedFromHeadline(sources.headlines, 1),
-    seedFromPacket(sources.buzz[1], buzzVoices[(rotation + 1) % 3]),
-    seedFromWeather(sources.weather, 'reaction-negative')
-  ]);
-  const channels: DailyChannel[] = ['Weather', 'Headlines', 'Buzz', 'Weather', 'Weather', 'Headlines', 'Buzz', 'Weather'];
-  return seeds.map((seed, i) => ({ seed, channel: channels[i] }));
+  const jobs: { channel: DailyChannel; seed: Promise<GenerationSeed> }[] = [
+    ...(['today', 'extended'] as const).flatMap(mode => forecasters.map(voice => ({
+      channel: 'Weather' as const, seed: seedFromWeather(sources.weather, voice, mode)
+    }))),
+    ...(['reaction-positive', 'reaction-negative'] as const).map(voice => ({
+      channel: 'Weather' as const, seed: seedFromWeather(sources.weather, voice)
+    })),
+    ...sources.headlines.stories.map((_, index) => ({
+      channel: 'Headlines' as const, seed: seedFromHeadline(sources.headlines, index)
+    })),
+    ...sources.buzz.flatMap(packet => buzzVoices.map(voice => ({
+      channel: 'Buzz' as const, seed: seedFromPacket(packet, voice)
+    })))
+  ];
+  return Promise.all(jobs.map(async ({ channel, seed }) => ({ channel, seed: await seed })));
 }
 
 /** One automatic attempt per Helena launch-day, including failures. Manual force is explicit. */
@@ -140,18 +143,18 @@ export async function ensureDaily(
           writeOnce(join(archive, 'headlines.json'), sources.headlines),
           ...sources.buzz.map((packet, i) => writeOnce(join(archive, 'buzz-' + (i + 1) + '.json'), packet))
         ]);
-        const plan = await dailySeeds(sources, day);
+        const plan = await dailySeeds(sources);
         signal.throwIfAborted();
-        progress('Writing 8 passages with Sol 6.1 low');
+        progress(`Writing ${plan.length} passages with Sol 6.1 low`);
         let completed = 0;
         const batch = await generateParallel(directory, plan.map(({ seed }) => ({ seed, writer })), () => {
-          progress(`Writing passages: ${++completed}/8 complete`);
+          progress(`Writing passages: ${++completed}/${plan.length} complete`);
         });
         signal.throwIfAborted();
         const failed = batch.attempts.filter(a => a.status !== 'ready' || !a.passage);
-        if (failed.length) throw new Error(`${failed.length}/8 passages failed; previous pack preserved. ` + failed.map(a => `#${a.attemptId}: ${a.error}`).join('; '));
+        if (failed.length) throw new Error(`${failed.length}/${plan.length} passages failed; previous pack preserved. ` + failed.map(a => `#${a.attemptId}: ${a.error}`).join('; '));
         const pack = validateDailyPack({
-          version: 1, id: state.runId, day, generatedAt: deps.now().toISOString(), model: writer.model, thinking: writer.thinking,
+          version: 2, id: state.runId, day, generatedAt: deps.now().toISOString(), model: writer.model, thinking: writer.thinking,
           entries: batch.attempts.map((a, i) => ({ channel: plan[i].channel, attemptId: a.attemptId,
             passage: { ...a.passage!, genre: 'Daily AI / ' + plan[i].channel } }))
         });
@@ -171,13 +174,4 @@ export async function ensureDaily(
   } catch (error) {
     return { pack: previous, reused: true, error: cleanText(error instanceof Error ? error.message : String(error), 1200) };
   }
-}
-
-/** A play-through pins its pack, so a background refresh never replaces text mid-round. */
-export class DailyDeck {
-  private index = 0;
-  constructor(readonly pack: DailyPack) {}
-  current(): DailyEntry { return this.pack.entries[this.index]; }
-  get position(): number { return this.index + 1; }
-  next(): DailyEntry { this.index = (this.index + 1) % this.pack.entries.length; return this.current(); }
 }
